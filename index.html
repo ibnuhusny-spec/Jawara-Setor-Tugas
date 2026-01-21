@@ -42,7 +42,7 @@
         const SCHOOL_NAME = "SDIT QURRATU A'YUN AL-ISLAMI MAROS"; 
         
         // PASTE URL GOOGLE APPS SCRIPT ANDA DI SINI
-        const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxDxseP5DydLdUE5qT_I5LKT2dnfTXdJ6M9OVSaEjw2yeeu9KP5spVd93zqwgtYr0ze/exec"; 
+        const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyr2pjvFpDdlCth9yu_6iu6-CtNexJIi-WLdtRkhWW0jd8jtpR69YIxok77KUMu4HY3/exec"; 
         // ======================================================================
 
         // --- HELPER ---
@@ -99,7 +99,7 @@
                         </button>
                     )}
                 </div>
-                <p className="text-[10px] text-green-200/60 uppercase tracking-widest pb-6">Versi HTML 9.2 (Fixed Audio & Tabs)</p>
+                <p className="text-[10px] text-green-200/60 uppercase tracking-widest pb-6">Versi HTML 10.0 (Audio & Dual Upload Fix)</p>
             </div>
         );
 
@@ -148,8 +148,11 @@
             const [audBlob, setAudBlob] = useState(null);
             const [audUrl, setAudUrl] = useState(null);
             const [isRec, setIsRec] = useState(false);
+            
+            // Audio Recording Ref
             const mrRef = useRef(null);
             const chunksRef = useRef([]);
+            const [audioExt, setAudioExt] = useState('.webm'); // Default extension
 
             const filteredStudents = useMemo(() => (!formClass ? students : students.filter(s => s.className === formClass)), [formClass, students]);
             const classList = useMemo(() => [...new Set(students.map(s => s.className))].sort(), [students]);
@@ -165,7 +168,8 @@
             }, [personalAssignments]);
 
             const handleStudentSubmit = async () => {
-                if(!formName || !formClass || (!imgFile && !audBlob)) { alert("Data tidak lengkap (Nama/Kelas/Mapel/File)."); return; }
+                if(!formName || !formClass) { alert("Pilih Kelas dan Nama dulu."); return; }
+                if(!imgFile && !audBlob) { alert("Lampirkan minimal satu tugas (Foto atau Suara)."); return; }
                 if (!formSubject) { alert("Pilih mata pelajaran."); return; }
 
                 setIsUploading(true);
@@ -175,15 +179,16 @@
                         if (imgFile) compressedImage = await compressImage(imgFile);
                         
                         let audioBase64 = null;
-                        let audioMimeType = "";
                         if (audBlob) {
                             audioBase64 = await blobToBase64(audBlob);
-                            audioMimeType = audBlob.type;
                         }
 
                         const payload = {
-                            type: "upload", studentName: formName, className: formClass, subject: formSubject,
-                            image: compressedImage, audio: audioBase64, audioMimeType: audioMimeType
+                            type: "upload", 
+                            studentName: formName, className: formClass, subject: formSubject,
+                            image: compressedImage, 
+                            audio: audioBase64, 
+                            audioExtension: audioExt // Kirim ekstensi file (.webm atau .mp4)
                         };
                         
                         await fetch(GOOGLE_SCRIPT_URL, { method: "POST", mode: "no-cors", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
@@ -198,18 +203,40 @@
             const startRec = async () => {
                 try {
                     const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-                    // Prefer mp4 for safari compat if available, otherwise webm
-                    let mimeType = MediaRecorder.isTypeSupported('audio/mp4') ? 'audio/mp4' : 'audio/webm';
+                    
+                    // CEK DUKUNGAN BROWSER (Safari butuh mp4/aac, Chrome butuh webm)
+                    let mimeType = 'audio/webm';
+                    let ext = '.webm';
+                    
+                    if (MediaRecorder.isTypeSupported('audio/mp4')) {
+                        mimeType = 'audio/mp4';
+                        ext = '.mp4';
+                    } else if (MediaRecorder.isTypeSupported('audio/webm;codecs=opus')) {
+                        mimeType = 'audio/webm;codecs=opus';
+                        ext = '.webm';
+                    }
+
+                    setAudioExt(ext);
+                    console.log("Recording format:", mimeType);
+
                     mrRef.current = new MediaRecorder(stream, { mimeType: mimeType, audioBitsPerSecond: 32000 });
                     chunksRef.current = [];
-                    mrRef.current.ondataavailable = e => chunksRef.current.push(e.data);
+                    
+                    mrRef.current.ondataavailable = e => {
+                        if (e.data.size > 0) chunksRef.current.push(e.data);
+                    };
+                    
                     mrRef.current.onstop = () => {
                         const blob = new Blob(chunksRef.current, { type: mimeType });
-                        setAudBlob(blob); setAudUrl(URL.createObjectURL(blob));
+                        setAudBlob(blob); 
+                        setAudUrl(URL.createObjectURL(blob));
                     };
-                    mrRef.current.start(); setIsRec(true);
+                    
+                    mrRef.current.start(); 
+                    setIsRec(true);
                 } catch(e) { alert("Izin mikrofon ditolak: " + e.message); }
             };
+            
             const stopRec = () => { if(mrRef.current) { mrRef.current.stop(); setIsRec(false); } };
 
             if (selectedAssignment) {
@@ -298,7 +325,8 @@
             const openGrading = (id) => {
                 const task = assignments.find(a => a.id === id);
                 setGradingId(id);
-                setGradingTab(task.files.image ? 'image' : 'audio'); // Auto select tab
+                // Auto pilih tab yang ada filenya
+                setGradingTab(task.files.image && task.files.image !== "ERROR_IMG" ? 'image' : 'audio'); 
                 if(task.grade) { setWritingScore(task.grade.writingScore); setRecitationScore(task.grade.recitationScore); setComment(task.grade.feedbackText); }
                 else { setWritingScore(''); setRecitationScore(''); setComment(''); }
             };
@@ -327,22 +355,25 @@
                             <h2 className="text-xl font-bold text-slate-800 mb-1">{task.studentName}</h2>
                             <p className="text-sm text-slate-500 mb-4 bg-slate-100 inline-block px-2 py-1 rounded">{task.className} - {task.subject}</p>
                             
-                            {/* TABS UNTUK MEMISAHKAN GAMBAR DAN AUDIO */}
+                            {/* TABS PILIHAN FILE */}
                             <div className="flex border-b border-slate-200 mb-4">
-                                <button onClick={() => setGradingTab('image')} className={`flex-1 py-2 text-sm font-bold ${gradingTab === 'image' ? 'text-blue-600 border-b-2 border-blue-600' : 'text-slate-400'}`}>FOTO TUGAS</button>
-                                <button onClick={() => setGradingTab('audio')} className={`flex-1 py-2 text-sm font-bold ${gradingTab === 'audio' ? 'text-blue-600 border-b-2 border-blue-600' : 'text-slate-400'}`}>REKAMAN SUARA</button>
+                                <button onClick={() => setGradingTab('image')} className={`flex-1 py-2 text-sm font-bold transition-colors ${gradingTab === 'image' ? 'text-blue-600 border-b-2 border-blue-600' : 'text-slate-400 hover:text-slate-600'}`}>FOTO TUGAS</button>
+                                <button onClick={() => setGradingTab('audio')} className={`flex-1 py-2 text-sm font-bold transition-colors ${gradingTab === 'audio' ? 'text-blue-600 border-b-2 border-blue-600' : 'text-slate-400 hover:text-slate-600'}`}>REKAMAN SUARA</button>
                             </div>
 
                             <div className="min-h-[200px] flex items-center justify-center bg-slate-50 rounded-xl border border-slate-200">
                                 {gradingTab === 'image' ? (
-                                    task.files.image ? <img src={task.files.image} className="w-full h-auto rounded-lg" alt="tugas"/> : <p className="text-slate-400 text-xs italic">Tidak ada foto dilampirkan.</p>
+                                    (task.files.image && task.files.image.length > 20) ? (
+                                        <img src={task.files.image} className="w-full h-auto rounded-lg" alt="tugas"/>
+                                    ) : <div className="text-center p-4"><p className="text-slate-400 text-xs italic">Tidak ada foto dilampirkan.</p></div>
                                 ) : (
-                                    task.files.audio ? (
+                                    (task.files.audio && task.files.audio.length > 20) ? (
                                         <div className="text-center w-full p-4">
-                                            <audio controls src={task.files.audio} className="w-full mb-2" />
-                                            <a href={task.files.audio} target="_blank" className="text-xs text-blue-500 underline block">Buka di Tab Baru</a>
+                                            <div className="bg-blue-50 p-4 rounded-full w-16 h-16 flex items-center justify-center mx-auto mb-3"><i data-lucide="mic" className="text-blue-500" width="32"></i></div>
+                                            <audio controls src={task.files.audio} className="w-full mb-3" />
+                                            <a href={task.files.audio} target="_blank" className="text-xs bg-blue-600 text-white px-3 py-2 rounded-lg font-bold inline-block hover:bg-blue-700">Download / Buka di Tab Baru</a>
                                         </div>
-                                    ) : <p className="text-slate-400 text-xs italic">Tidak ada rekaman suara.</p>
+                                    ) : <div className="text-center p-4"><p className="text-slate-400 text-xs italic">Tidak ada rekaman suara.</p></div>
                                 )}
                             </div>
                         </div>
