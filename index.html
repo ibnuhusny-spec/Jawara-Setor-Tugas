@@ -15,7 +15,7 @@
     <!-- Babel -->
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
 
-    <!-- Lucide Icons -->
+    <!-- Lucide Icons (Versi Stabil Vanilla JS) -->
     <script src="https://unpkg.com/lucide@latest"></script>
 
     <!-- SheetJS untuk Import Excel -->
@@ -26,10 +26,8 @@
         #root { height: 100%; width: 100%; overflow-y: auto; }
         .scrollbar-hide::-webkit-scrollbar { display: none; }
         .scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
-        
-        /* Animasi */
-        .fade-in { animation: fadeIn 0.3s ease-in-out; }
-        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        .fade-in { animation: fadeIn 0.5s ease-in-out; }
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
     </style>
 </head>
 <body>
@@ -37,162 +35,85 @@
 
     <script type="text/babel">
         const { useState, useRef, useEffect, useMemo } = React;
-        const { 
-            Camera, Mic, Upload, X, Check, FileAudio, FileImage, 
-            Loader2, Home, User, BookOpen, LogOut, GraduationCap, 
-            Play, Award, MessageSquare, Lock, KeyRound, 
-            Users, BookMarked, FileSpreadsheet, Plus, Trash2, Filter, Eye, Search
-        } = lucide;
 
         // ======================================================================
-        // KONFIGURASI SEKOLAH (UBAH DISINI)
+        // KONFIGURASI (WAJIB DIISI)
         // ======================================================================
-        const SCHOOL_NAME = "SDIT QURRATU A'YUN AL-ISLAMI MAROS"; // Otomatis Kapital
+        const SCHOOL_NAME = "SDIT QURRATU A'YUN AL-ISLAMI MAROS"; 
         
-        // Masukkan URL Google Apps Script Anda di sini nanti
-        const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzZNtp8VWZd4uvziozUA8634Gf8hOZX3vMYObf9R1R-BYNrtXuqXx64Gk96AC0hFuaZqQ/exec"; 
+        // Masukkan URL Google Apps Script (Web App URL) Anda di sini
+        const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycby2c3HSapWp4WvxJuLh6mFS7KvzzsfMgFY7chO5-63IQebs9hQ9pBvG7tduLaa2mp56/exec"; 
         // ======================================================================
 
-        // --- DATA AWAL (DEFAULT KOSONG) ---
+        // --- DATA AWAL ---
         const INITIAL_ASSIGNMENTS = [];
-        const INITIAL_STUDENTS = []; 
-        const INITIAL_SUBJECTS = []; 
 
         // ----------------------------------------------------------------------
         // KOMPONEN: HALAMAN SAMPUL
         // ----------------------------------------------------------------------
-        const CoverPage = ({ onStart }) => (
-            <div 
-                className="absolute inset-0 z-50 flex flex-col items-center justify-center text-center p-6 h-full w-full"
-                style={{ 
-                    background: 'linear-gradient(180deg, #16a34a 0%, #14532d 100%)',
-                    color: 'white'
-                }}
-            >
+        const CoverPage = ({ onStart, isLoadingData }) => (
+            <div className="absolute inset-0 z-50 flex flex-col items-center justify-center text-center p-6 h-full w-full"
+                style={{ background: 'linear-gradient(180deg, #16a34a 0%, #14532d 100%)', color: 'white' }}>
                 <div className="relative z-10 flex flex-col items-center w-full h-full justify-center">
-                    <div className="flex-1 flex flex-col items-center justify-center w-full">
-                         {/* Logo Container */}
-                        <div className="w-24 h-24 bg-white rounded-full flex items-center justify-center mb-6 shadow-2xl border-4 border-yellow-400 overflow-hidden">
-                            <img 
-                                src="logo.png" 
-                                alt="Logo" 
-                                className="w-full h-full object-contain p-2"
-                                onError={(e) => {
-                                    e.target.style.display = 'none';
-                                    e.target.parentElement.innerHTML = '<span style="font-size: 3rem;">🏫</span>'; 
-                                }}
-                            />
+                    <div className="w-24 h-24 bg-white rounded-full flex items-center justify-center mb-6 shadow-2xl border-4 border-yellow-400 overflow-hidden">
+                        <img src="logo.png" alt="Logo" className="w-full h-full object-contain p-2" onError={(e) => { e.target.style.display = 'none'; e.target.parentElement.innerHTML = '<span style="font-size: 3rem;">🏫</span>'; }} />
+                    </div>
+                    <h1 className="text-3xl font-extrabold mb-2 text-yellow-300 drop-shadow-md uppercase font-sans tracking-wide leading-tight">JAWARA<br/>SETOR TUGAS</h1>
+                    <div className="h-1 w-16 bg-yellow-400 rounded-full mb-4"></div>
+                    <h2 className="text-sm font-bold text-green-50 mb-12 font-sans tracking-wide uppercase whitespace-nowrap overflow-hidden text-ellipsis w-full px-2">{SCHOOL_NAME}</h2>
+                    
+                    {isLoadingData ? (
+                        <div className="flex flex-col items-center gap-2 text-green-100 animate-pulse">
+                            <i data-lucide="loader-2" className="animate-spin"></i>
+                            <span className="text-xs">Menghubungkan ke Database...</span>
                         </div>
-                        
-                        <h1 className="text-3xl font-extrabold mb-2 text-yellow-300 drop-shadow-md uppercase font-sans tracking-wide leading-tight">
-                            JAWARA<br/>SETOR TUGAS
-                        </h1>
-                        
-                        <div className="h-1 w-16 bg-yellow-400 rounded-full mb-4"></div>
-
-                        {/* NAMA SEKOLAH (Satu Baris & Kapital) */}
-                        <h2 className="text-sm font-bold text-green-50 mb-12 font-sans tracking-wide uppercase whitespace-nowrap overflow-hidden text-ellipsis w-full px-2">
-                            {SCHOOL_NAME}
-                        </h2>
-                        
-                        <button 
-                            onClick={onStart}
-                            className="w-full max-w-[260px] bg-white text-green-900 font-bold py-4 rounded-full shadow-lg hover:bg-green-50 active:scale-95 transition-all flex items-center justify-center gap-2 group border-b-4 border-green-200"
-                        >
-                            <div className="bg-green-600 rounded-full p-1 text-white flex items-center justify-center">
-                                <i data-lucide="play" width="16" height="16"></i>
-                            </div>
+                    ) : (
+                        <button onClick={onStart} className="w-full max-w-[260px] bg-white text-green-900 font-bold py-4 rounded-full shadow-lg hover:bg-green-50 active:scale-95 transition-all flex items-center justify-center gap-2 group border-b-4 border-green-200">
+                            <div className="bg-green-600 rounded-full p-1 text-white flex items-center justify-center"><i data-lucide="play" width="16" height="16"></i></div>
                             <span className="text-lg">MULAI APLIKASI</span>
                         </button>
-                    </div>
-                    
-                    <p className="text-[10px] text-green-200/60 uppercase tracking-widest pb-6">
-                        Versi HTML 6.0 (Auto-Save Ready)
-                    </p>
+                    )}
                 </div>
+                <p className="text-[10px] text-green-200/60 uppercase tracking-widest pb-6">Versi HTML 7.2 (Stable Vanilla Icons)</p>
             </div>
         );
 
         // ----------------------------------------------------------------------
-        // KOMPONEN: PEMILIHAN PERAN (ROLE)
+        // KOMPONEN: ROLE SELECTION
         // ----------------------------------------------------------------------
         const RoleSelection = ({ onBack, onSelectStudent, onSelectTeacher }) => {
             const [showLoginModal, setShowLoginModal] = useState(false);
             const [passwordInput, setPasswordInput] = useState('');
 
             const handleTeacherLogin = () => {
-                if (passwordInput === 'QA1234') {
-                    onSelectTeacher();
-                    setShowLoginModal(false);
-                    setPasswordInput('');
-                } else {
-                    alert('Password Salah! (Default: 123456)');
-                }
+                if (passwordInput === '123456') { onSelectTeacher(); setShowLoginModal(false); setPasswordInput(''); } 
+                else { alert('Password Salah! (Default: 123456)'); }
             };
 
             return (
                 <div className="flex flex-col min-h-screen bg-slate-50 p-6 pt-12 relative font-sans">
-                    {/* Modal Login Guru */}
                     {showLoginModal && (
                         <div className="fixed inset-0 z-[60] bg-black/50 flex items-center justify-center p-4">
                             <div className="bg-white rounded-2xl p-6 w-full max-w-sm shadow-2xl animate-bounce-sm">
                                 <div className="flex justify-between items-center mb-4">
-                                    <h3 className="text-lg font-bold text-slate-800 flex items-center gap-2">
-                                        <i data-lucide="lock" width="20" className="text-orange-600"></i> Keamanan Guru
-                                    </h3>
-                                    <button onClick={() => setShowLoginModal(false)} className="text-slate-400 hover:text-red-500">
-                                        <i data-lucide="x" width="24"></i>
-                                    </button>
+                                    <h3 className="text-lg font-bold text-slate-800 flex items-center gap-2"><i data-lucide="lock" width="20" className="text-orange-600"></i> Keamanan Guru</h3>
+                                    <button onClick={() => setShowLoginModal(false)} className="text-slate-400 hover:text-red-500"><i data-lucide="x" width="24"></i></button>
                                 </div>
-                                <p className="text-sm text-slate-500 mb-4">Masukkan password khusus guru.</p>
-                                <input 
-                                    type="password" 
-                                    value={passwordInput}
-                                    onChange={(e) => setPasswordInput(e.target.value)}
-                                    placeholder="Password..."
-                                    className="w-full p-3 border-2 border-slate-200 rounded-xl mb-4 focus:border-orange-500 outline-none text-center text-lg tracking-widest"
-                                    autoFocus
-                                />
-                                <button 
-                                    onClick={handleTeacherLogin}
-                                    className="w-full bg-orange-600 text-white font-bold py-3 rounded-xl hover:bg-orange-700 transition-colors"
-                                >
-                                    MASUK
-                                </button>
+                                <input type="password" value={passwordInput} onChange={(e) => setPasswordInput(e.target.value)} placeholder="Password..." className="w-full p-3 border-2 border-slate-200 rounded-xl mb-4 focus:border-orange-500 outline-none text-center text-lg tracking-widest" autoFocus />
+                                <button onClick={handleTeacherLogin} className="w-full bg-orange-600 text-white font-bold py-3 rounded-xl hover:bg-orange-700 transition-colors">MASUK</button>
                             </div>
                         </div>
                     )}
-
-                    <button onClick={onBack} className="text-slate-500 mb-6 flex items-center gap-1 text-sm font-medium hover:text-green-600 transition-colors">
-                        ← Kembali ke Depan
-                    </button>
+                    <button onClick={onBack} className="text-slate-500 mb-6 flex items-center gap-1 text-sm font-medium hover:text-green-600 transition-colors">← Kembali ke Depan</button>
                     <h2 className="text-2xl font-bold text-slate-800 mb-6">Masuk Sebagai:</h2>
-                    
                     <div className="space-y-4">
-                        <button 
-                            onClick={onSelectStudent}
-                            className="w-full bg-white p-6 rounded-2xl shadow-sm border-2 border-slate-100 flex items-center gap-4 hover:border-green-500 hover:bg-green-50 transition-all text-left group"
-                        >
-                            <div className="bg-blue-100 p-4 rounded-full group-hover:bg-blue-200 transition-colors">
-                                <i data-lucide="user" className="text-blue-600" width="32" height="32"></i>
-                            </div>
-                            <div>
-                                <h3 className="text-lg font-bold text-slate-800">Murid / Wali</h3>
-                                <p className="text-slate-500 text-sm">Kirim tugas & lihat nilai</p>
-                            </div>
+                        <button onClick={onSelectStudent} className="w-full bg-white p-6 rounded-2xl shadow-sm border-2 border-slate-100 flex items-center gap-4 hover:border-green-500 hover:bg-green-50 transition-all text-left group">
+                            <div className="bg-blue-100 p-4 rounded-full group-hover:bg-blue-200 transition-colors"><i data-lucide="user" width="32" height="32" className="text-blue-600"></i></div>
+                            <div><h3 className="text-lg font-bold text-slate-800">Murid / Wali</h3><p className="text-slate-500 text-sm">Kirim tugas & lihat nilai</p></div>
                         </button>
-
-                        <button 
-                            onClick={() => setShowLoginModal(true)}
-                            className="w-full bg-white p-6 rounded-2xl shadow-sm border-2 border-slate-100 flex items-center gap-4 hover:border-orange-500 hover:bg-orange-50 transition-all text-left group"
-                        >
-                            <div className="bg-orange-100 p-4 rounded-full group-hover:bg-orange-200 transition-colors">
-                                <i data-lucide="key-round" className="text-orange-600" width="32" height="32"></i>
-                            </div>
-                            <div>
-                                <h3 className="text-lg font-bold text-slate-800">Guru</h3>
-                                <p className="text-slate-500 text-sm">Mode terkunci (Password)</p>
-                            </div>
+                        <button onClick={() => setShowLoginModal(true)} className="w-full bg-white p-6 rounded-2xl shadow-sm border-2 border-slate-100 flex items-center gap-4 hover:border-orange-500 hover:bg-orange-50 transition-all text-left group">
+                            <div className="bg-orange-100 p-4 rounded-full group-hover:bg-orange-200 transition-colors"><i data-lucide="key-round" width="32" height="32" className="text-orange-600"></i></div>
+                            <div><h3 className="text-lg font-bold text-slate-800">Guru</h3><p className="text-slate-500 text-sm">Mode terkunci (Password)</p></div>
                         </button>
                     </div>
                 </div>
@@ -207,7 +128,6 @@
             const [selectedAssignment, setSelectedAssignment] = useState(null); 
             const [isUploading, setIsUploading] = useState(false);
             
-            // Form State
             const [formName, setFormName] = useState('');
             const [formClass, setFormClass] = useState('');
             const [formSubject, setFormSubject] = useState('');
@@ -215,33 +135,26 @@
             const [audBlob, setAudBlob] = useState(null);
             const [audUrl, setAudUrl] = useState(null);
             const [isRec, setIsRec] = useState(false);
-            
             const mrRef = useRef(null);
             const chunksRef = useRef([]);
 
-            // Helper: Filter Students based on selected class
             const filteredStudents = useMemo(() => {
                 if(!formClass) return students;
                 return students.filter(s => s.className === formClass);
             }, [formClass, students]);
 
-            // Helper: Unique Classes
             const classList = useMemo(() => {
                 const classes = students.map(s => s.className);
                 return [...new Set(classes)].sort();
             }, [students]);
 
-            // --- FILTER TUGAS PERSONAL ---
             const personalAssignments = useMemo(() => {
                 if (!formName || !formClass) return [];
                 return assignments.filter(a => a.studentName === formName && a.className === formClass);
             }, [assignments, formName, formClass]);
 
-            // --- HITUNG TOTAL PERSONAL ---
             const personalSummary = useMemo(() => {
-                let totalWriting = 0;
-                let totalRecitation = 0;
-                let count = 0;
+                let totalWriting = 0, totalRecitation = 0, count = 0;
                 personalAssignments.forEach(a => {
                     if(a.status === 'Dinilai' && a.grade) {
                         totalWriting += parseInt(a.grade.writingScore || 0);
@@ -252,7 +165,6 @@
                 return { totalWriting, totalRecitation, count };
             }, [personalAssignments]);
 
-            // --- CONVERT BLOB TO BASE64 (Untuk Upload Drive) ---
             const blobToBase64 = (blob) => {
                 return new Promise((resolve, reject) => {
                     const reader = new FileReader();
@@ -264,17 +176,11 @@
 
             const handleStudentSubmit = async () => {
                 if(!formName || !formClass || (!imgFile && !audBlob)) {
-                    alert("Lengkapi data (Nama, Kelas, Mapel) dan minimal 1 file tugas.");
-                    return;
+                    alert("Lengkapi data dan minimal 1 file tugas."); return;
                 }
-                if (!formSubject) {
-                    alert("Silahkan pilih mata pelajaran.");
-                    return;
-                }
+                if (!formSubject) { alert("Pilih mata pelajaran."); return; }
 
                 setIsUploading(true);
-                
-                // 1. SIMPAN LOKAL (Agar aplikasi tetap jalan walau offline/tanpa drive)
                 const newAssignment = {
                     id: Date.now(),
                     studentName: formName,
@@ -283,16 +189,16 @@
                     timestamp: new Date().toISOString(),
                     status: "Menunggu",
                     files: {
-                        image: imgFile, // Object File tidak bisa disave ke localStorage, nanti akan hilang saat refresh. Di real app butuh server.
+                        image: imgFile,
                         audio: audBlob ? URL.createObjectURL(audBlob) : null
                     },
                     grade: null
                 };
 
-                // 2. INTEGRASI GOOGLE DRIVE (Jika URL disetting)
                 if (GOOGLE_SCRIPT_URL) {
                     try {
                         const payload = {
+                            type: "upload",
                             studentName: formName,
                             className: formClass,
                             subject: formSubject,
@@ -300,27 +206,18 @@
                             image: imgFile ? await blobToBase64(imgFile) : null,
                             audio: audBlob ? await blobToBase64(audBlob) : null
                         };
-
-                        // Kirim ke Google Apps Script (Mode no-cors untuk bypass browser policy)
                         await fetch(GOOGLE_SCRIPT_URL, {
-                            method: "POST",
-                            mode: "no-cors", 
+                            method: "POST", mode: "no-cors", 
                             headers: { "Content-Type": "application/json" },
                             body: JSON.stringify(payload)
                         });
-                        
-                        console.log("Data terkirim ke Drive");
-                    } catch (err) {
-                        console.error("Gagal upload ke Drive:", err);
-                    }
+                    } catch (err) { console.error("Upload error:", err); }
                 }
 
                 setAssignments([newAssignment, ...assignments]);
                 setIsUploading(false);
                 alert("Tugas Terkirim!");
-                
-                setFormSubject('');
-                setImgFile(null); setAudBlob(null); setAudUrl(null);
+                setFormSubject(''); setImgFile(null); setAudBlob(null); setAudUrl(null);
                 setActiveTab('tasks');
             };
 
@@ -339,43 +236,23 @@
                     setIsRec(true);
                 } catch(e) { alert("Butuh izin mikrofon"); }
             };
-            const stopRec = () => {
-                if(mrRef.current) { mrRef.current.stop(); setIsRec(false); }
-            };
+            const stopRec = () => { if(mrRef.current) { mrRef.current.stop(); setIsRec(false); } };
 
-            // MODAL DETAIL KOREKSI
             if (selectedAssignment) {
                 const task = selectedAssignment;
                 return (
                     <div className="bg-slate-50 min-h-screen p-4 pb-20 font-sans">
-                        <button onClick={() => setSelectedAssignment(null)} className="mb-4 text-slate-500 font-bold flex items-center gap-1">
-                            <i data-lucide="x" width="20"></i> Tutup
-                        </button>
+                        <button onClick={() => setSelectedAssignment(null)} className="mb-4 text-slate-500 font-bold flex items-center gap-1"><i data-lucide="x" width="20"></i> Tutup</button>
                         <div className="bg-white rounded-2xl p-5 shadow-lg border border-slate-200">
                             <h2 className="text-xl font-bold text-slate-800 mb-2">Detail Koreksi Guru</h2>
                             <p className="text-sm text-slate-500 mb-4">{task.subject} - {new Date(task.timestamp).toLocaleDateString()}</p>
-                            
                             <div className="space-y-4">
                                 <div className="bg-green-50 p-3 rounded-lg border border-green-100">
                                     <span className="text-xs font-bold text-green-700 uppercase block mb-1">Komentar:</span>
                                     <p className="text-slate-800 italic">"{task.grade?.feedbackText || '-'}"</p>
                                 </div>
-                                
-                                {task.grade?.feedbackAudio && (
-                                    <div>
-                                        <span className="text-xs font-bold text-slate-400 uppercase block mb-1">Pesan Suara:</span>
-                                        <audio src={task.grade.feedbackAudio} controls className="w-full" />
-                                    </div>
-                                )}
-                                
-                                {task.grade?.feedbackImage ? (
-                                    <div>
-                                        <span className="text-xs font-bold text-slate-400 uppercase block mb-1">Coretan Koreksi:</span>
-                                        <img src={task.grade.feedbackImage} className="w-full rounded-lg border" alt="Koreksi" />
-                                    </div>
-                                ) : (
-                                    <p className="text-xs text-slate-400 italic">Tidak ada lampiran gambar dari guru.</p>
-                                )}
+                                {task.grade?.feedbackAudio && (<div><span className="text-xs font-bold text-slate-400 uppercase block mb-1">Pesan Suara:</span><audio src={task.grade.feedbackAudio} controls className="w-full" /></div>)}
+                                {task.grade?.feedbackImage ? (<div><span className="text-xs font-bold text-slate-400 uppercase block mb-1">Coretan Koreksi:</span><img src={task.grade.feedbackImage} className="w-full rounded-lg border" alt="Koreksi" /></div>) : (<p className="text-xs text-slate-400 italic">Tidak ada lampiran gambar.</p>)}
                             </div>
                         </div>
                     </div>
@@ -384,18 +261,9 @@
 
             return (
                 <div className="bg-slate-50 min-h-screen pb-24 relative font-sans">
-                    {isUploading && (
-                        <div className="fixed inset-0 bg-black/50 z-[100] flex flex-col items-center justify-center text-white">
-                            <i data-lucide="loader-2" className="animate-spin mb-2" width="48" height="48"></i>
-                            <p className="font-bold">Mengirim ke Server...</p>
-                        </div>
-                    )}
-
+                    {isUploading && (<div className="fixed inset-0 bg-black/50 z-[100] flex flex-col items-center justify-center text-white"><i data-lucide="loader-2" width="48" height="48" className="animate-spin mb-2"></i><p className="font-bold">Mengirim ke Server...</p></div>)}
                     <div className="bg-white p-4 sticky top-0 z-40 shadow-sm flex items-center justify-between">
-                        <div className="flex items-center gap-2">
-                            <div className="w-8 h-8 bg-green-600 rounded-lg flex items-center justify-center text-white font-bold text-xs shadow-md">JW</div>
-                            <span className="font-bold text-slate-800 text-sm">Area Murid</span>
-                        </div>
+                        <div className="flex items-center gap-2"><div className="w-8 h-8 bg-green-600 rounded-lg flex items-center justify-center text-white font-bold text-xs shadow-md">JW</div><span className="font-bold text-slate-800 text-sm">Area Murid</span></div>
                         <button onClick={onExit} className="text-xs text-red-500 font-bold border border-red-200 px-3 py-1.5 rounded-full hover:bg-red-50">Keluar</button>
                     </div>
 
@@ -406,210 +274,97 @@
                                     <div className="absolute top-0 right-0 w-24 h-24 bg-white opacity-10 rounded-full -mr-8 -mt-8"></div>
                                     <h2 className="text-xl font-bold mb-1 relative z-10">Setor Tugas Baru</h2>
                                     <p className="text-green-100 text-sm mb-4 relative z-10">Lengkapi data berikut:</p>
-                                    
                                     <div className="space-y-3 relative z-10">
-                                        {/* Warning Jika Data Kosong */}
-                                        {classList.length === 0 && (
-                                            <div className="bg-yellow-100 text-yellow-800 text-xs p-2 rounded mb-2">
-                                                Belum ada data kelas/siswa dari guru. Mohon minta guru untuk input data terlebih dahulu.
-                                            </div>
-                                        )}
-
                                         <div className="flex gap-2">
-                                            {/* Pilih Kelas */}
-                                            <select 
-                                                value={formClass} 
-                                                onChange={e=>setFormClass(e.target.value)} 
-                                                className="w-1/3 p-3 rounded-xl text-slate-800 text-sm outline-none bg-white shadow-sm"
-                                            >
+                                            <select value={formClass} onChange={e=>setFormClass(e.target.value)} className="w-1/3 p-3 rounded-xl text-slate-800 text-sm outline-none bg-white shadow-sm">
                                                 <option value="">Kelas</option>
-                                                {classList.map(c => (
-                                                    <option key={c} value={c}>{c}</option>
-                                                ))}
+                                                {classList.map(c => <option key={c} value={c}>{c}</option>)}
                                             </select>
-
-                                            {/* Pilih Mapel */}
-                                            <select 
-                                                value={formSubject} 
-                                                onChange={e=>setFormSubject(e.target.value)} 
-                                                className="w-2/3 p-3 rounded-xl text-slate-800 text-sm outline-none bg-white shadow-sm"
-                                            >
+                                            <select value={formSubject} onChange={e=>setFormSubject(e.target.value)} className="w-2/3 p-3 rounded-xl text-slate-800 text-sm outline-none bg-white shadow-sm">
                                                 <option value="">Pilih Mapel</option>
-                                                {subjects.map(s => (
-                                                    <option key={s} value={s}>{s}</option>
-                                                ))}
+                                                {subjects.map(s => <option key={s} value={s}>{s}</option>)}
                                             </select>
                                         </div>
-
-                                        {/* Input Nama */}
-                                        <select 
-                                            value={formName} 
-                                            onChange={e=>setFormName(e.target.value)} 
-                                            className="w-full p-3 rounded-xl text-slate-800 text-sm outline-none shadow-sm bg-white disabled:bg-slate-200"
-                                            disabled={!formClass}
-                                        >
+                                        <select value={formName} onChange={e=>setFormName(e.target.value)} className="w-full p-3 rounded-xl text-slate-800 text-sm outline-none shadow-sm bg-white disabled:bg-slate-200" disabled={!formClass}>
                                             <option value="">{formClass ? "Pilih Nama Anda..." : "Pilih Kelas Dulu"}</option>
-                                            {filteredStudents.map(s => (
-                                                <option key={s.id} value={s.name}>{s.name}</option>
-                                            ))}
+                                            {filteredStudents.map(s => <option key={s.id} value={s.name}>{s.name}</option>)}
                                         </select>
+                                        {classList.length === 0 && <p className="text-xs text-white bg-red-500/20 p-2 rounded">Data Siswa kosong. Hubungi Guru.</p>}
                                     </div>
                                 </div>
 
                                 <div className="bg-white rounded-3xl p-5 shadow-sm space-y-4 border border-slate-100">
-                                    <h3 className="font-bold text-slate-700 flex items-center gap-2">
-                                        <i data-lucide="upload" width="18" className="text-green-600"></i> Lampiran
-                                    </h3>
-                                    
-                                    {/* Image */}
+                                    <h3 className="font-bold text-slate-700 flex items-center gap-2"><i data-lucide="upload" width="18" className="text-green-600"></i> Lampiran</h3>
                                     <div className="border-2 border-dashed border-slate-200 rounded-2xl p-4 flex flex-col items-center justify-center bg-slate-50 transition-colors hover:bg-slate-100">
                                         {imgFile ? (
-                                            <div className="relative w-full">
-                                                <img src={URL.createObjectURL(imgFile)} className="h-40 w-full object-cover rounded-xl" alt="preview"/>
-                                                <button onClick={()=>setImgFile(null)} className="absolute top-2 right-2 bg-red-500 text-white p-1.5 rounded-full shadow-lg"><i data-lucide="x" width="14"></i></button>
-                                            </div>
+                                            <div className="relative w-full"><img src={URL.createObjectURL(imgFile)} className="h-40 w-full object-cover rounded-xl" alt="preview"/><button onClick={()=>setImgFile(null)} className="absolute top-2 right-2 bg-red-500 text-white p-1.5 rounded-full shadow-lg"><i data-lucide="x" width="14"></i></button></div>
                                         ) : (
-                                            <label className="flex flex-col items-center gap-2 cursor-pointer w-full py-4">
-                                                <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center text-blue-600">
-                                                    <i data-lucide="camera" width="24"></i>
-                                                </div>
-                                                <span className="text-sm font-medium text-slate-600">Ambil/Pilih Foto</span>
-                                                <input type="file" accept="image/*" className="hidden" onChange={e => e.target.files && setImgFile(e.target.files[0])} />
-                                            </label>
+                                            <label className="flex flex-col items-center gap-2 cursor-pointer w-full py-4"><div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center text-blue-600"><i data-lucide="camera" width="24"></i></div><span className="text-sm font-medium text-slate-600">Ambil/Pilih Foto</span><input type="file" accept="image/*" className="hidden" onChange={e => e.target.files && setImgFile(e.target.files[0])} /></label>
                                         )}
                                     </div>
-
-                                    {/* Audio */}
                                     <div className="border-2 border-dashed border-slate-200 rounded-2xl p-4 flex items-center justify-center bg-slate-50">
                                         {audUrl ? (
-                                            <div className="flex items-center gap-2 w-full justify-between px-2 bg-white p-2 rounded-xl shadow-sm border border-slate-100">
-                                                <audio src={audUrl} controls className="h-8 w-48" />
-                                                <button onClick={()=>{setAudUrl(null); setAudBlob(null);}} className="text-red-500 bg-red-50 p-2 rounded-lg"><i data-lucide="x" width="16"></i></button>
-                                            </div>
+                                            <div className="flex items-center gap-2 w-full justify-between px-2 bg-white p-2 rounded-xl shadow-sm border border-slate-100"><audio src={audUrl} controls className="h-8 w-48" /><button onClick={()=>{setAudUrl(null); setAudBlob(null);}} className="text-red-500 bg-red-50 p-2 rounded-lg"><i data-lucide="x" width="16"></i></button></div>
                                         ) : (
-                                            <button onClick={isRec ? stopRec : startRec} className={`flex items-center gap-3 px-6 py-3 rounded-full text-sm font-bold transition-all w-full justify-center ${isRec ? 'bg-red-500 text-white animate-pulse shadow-lg shadow-red-200' : 'bg-white border-2 border-slate-200 text-slate-600 hover:border-green-400 hover:text-green-600'}`}>
-                                                <i data-lucide="mic" width="18"></i> {isRec ? 'SEDANG MEREKAM...' : 'Rekam Suara'}
-                                            </button>
+                                            <button onClick={isRec ? stopRec : startRec} className={`flex items-center gap-3 px-6 py-3 rounded-full text-sm font-bold transition-all w-full justify-center ${isRec ? 'bg-red-500 text-white animate-pulse shadow-lg shadow-red-200' : 'bg-white border-2 border-slate-200 text-slate-600 hover:border-green-400 hover:text-green-600'}`}><i data-lucide="mic" width="18"></i> {isRec ? 'SEDANG MEREKAM...' : 'Rekam Suara'}</button>
                                         )}
                                     </div>
-
-                                    <button onClick={handleStudentSubmit} className="w-full bg-blue-600 text-white py-4 rounded-2xl font-bold shadow-lg shadow-blue-200 active:scale-95 transition-transform mt-4 flex items-center justify-center gap-2">
-                                        KIRIM SEKARANG <i data-lucide="check" width="20"></i>
-                                    </button>
+                                    <button onClick={handleStudentSubmit} className="w-full bg-blue-600 text-white py-4 rounded-2xl font-bold shadow-lg shadow-blue-200 active:scale-95 transition-transform mt-4 flex items-center justify-center gap-2">KIRIM SEKARANG <i data-lucide="check" width="20"></i></button>
                                 </div>
                             </div>
                         )}
 
                         {activeTab === 'tasks' && (
                             <div className="space-y-6 fade-in">
-                                {/* FILTER/IDENTITAS DI HALAMAN NILAI */}
                                 <div className="bg-white p-4 rounded-xl shadow-sm border border-slate-100">
-                                    <h3 className="text-xs font-bold text-slate-400 uppercase mb-2 flex items-center gap-1">
-                                        <i data-lucide="search" width="14"></i> Identitas Rapor
-                                    </h3>
+                                    <h3 className="text-xs font-bold text-slate-400 uppercase mb-2 flex items-center gap-1"><i data-lucide="search" width="14"></i> Identitas Rapor</h3>
                                     <div className="flex gap-2">
-                                        <select 
-                                            value={formClass} 
-                                            onChange={e=>setFormClass(e.target.value)} 
-                                            className="w-1/3 p-2 rounded-lg border text-sm bg-slate-50"
-                                        >
+                                        <select value={formClass} onChange={e=>setFormClass(e.target.value)} className="w-1/3 p-2 rounded-lg border text-sm bg-slate-50">
                                             <option value="">Kelas</option>
-                                            {classList.map(c => (
-                                                <option key={c} value={c}>{c}</option>
-                                            ))}
+                                            {classList.map(c => <option key={c} value={c}>{c}</option>)}
                                         </select>
-                                        <select 
-                                            value={formName} 
-                                            onChange={e=>setFormName(e.target.value)} 
-                                            className="w-2/3 p-2 rounded-lg border text-sm bg-slate-50 disabled:opacity-50"
-                                            disabled={!formClass}
-                                        >
+                                        <select value={formName} onChange={e=>setFormName(e.target.value)} className="w-2/3 p-2 rounded-lg border text-sm bg-slate-50 disabled:opacity-50" disabled={!formClass}>
                                             <option value="">{formClass ? "Pilih Nama..." : "-"}</option>
-                                            {filteredStudents.map(s => (
-                                                <option key={s.id} value={s.name}>{s.name}</option>
-                                            ))}
+                                            {filteredStudents.map(s => <option key={s.id} value={s.name}>{s.name}</option>)}
                                         </select>
                                     </div>
                                 </div>
 
-                                {/* LOGIK TAMPILAN NILAI */}
                                 {(!formName || !formClass) ? (
                                      <div className="text-center py-10 opacity-60">
-                                        <div className="w-16 h-16 bg-slate-100 rounded-full flex items-center justify-center mx-auto mb-3">
-                                            <i data-lucide="user" className="text-slate-400" width={32}></i>
-                                        </div>
+                                        <div className="w-16 h-16 bg-slate-100 rounded-full flex items-center justify-center mx-auto mb-3"><i data-lucide="user" className="text-slate-400" width="32"></i></div>
                                         <p className="text-slate-500 text-sm px-8">Silahkan <b>Pilih Kelas & Nama</b> di atas untuk melihat nilai rapor Anda.</p>
                                      </div>
                                 ) : (
                                     <>
-                                        {/* HEADER PERSONAL */}
-                                        <div className="text-center">
-                                            <h2 className="text-lg font-bold text-slate-800">{formName}</h2>
-                                            <p className="text-xs text-slate-500">Kelas {formClass}</p>
-                                        </div>
-
-                                        {/* RINGKASAN TOTAL (PERSONAL) */}
+                                        <div className="text-center"><h2 className="text-lg font-bold text-slate-800">{formName}</h2><p className="text-xs text-slate-500">Kelas {formClass}</p></div>
                                         <div className="bg-gradient-to-r from-blue-600 to-blue-800 rounded-2xl p-5 text-white shadow-lg">
                                             <h3 className="text-sm font-bold opacity-80 mb-3 uppercase tracking-wider text-center">Total Poin Saya</h3>
                                             <div className="grid grid-cols-2 gap-4">
-                                                <div className="bg-white/10 p-3 rounded-xl text-center backdrop-blur-sm border border-white/20">
-                                                    <span className="block text-3xl font-extrabold">{personalSummary.totalWriting}</span>
-                                                    <span className="text-[10px] opacity-80 uppercase">Menulis</span>
-                                                </div>
-                                                <div className="bg-white/10 p-3 rounded-xl text-center backdrop-blur-sm border border-white/20">
-                                                    <span className="block text-3xl font-extrabold">{personalSummary.totalRecitation}</span>
-                                                    <span className="text-[10px] opacity-80 uppercase">Hafalan</span>
-                                                </div>
+                                                <div className="bg-white/10 p-3 rounded-xl text-center backdrop-blur-sm border border-white/20"><span className="block text-3xl font-extrabold">{personalSummary.totalWriting}</span><span className="text-[10px] opacity-80 uppercase">Menulis</span></div>
+                                                <div className="bg-white/10 p-3 rounded-xl text-center backdrop-blur-sm border border-white/20"><span className="block text-3xl font-extrabold">{personalSummary.totalRecitation}</span><span className="text-[10px] opacity-80 uppercase">Hafalan</span></div>
                                             </div>
                                         </div>
-
-                                        {/* LIST TUGAS PERSONAL */}
-                                        <div className="flex justify-between items-center px-1">
-                                            <h3 className="font-bold text-slate-700">Riwayat Tugas</h3>
-                                            <span className="text-xs text-slate-400">{personalSummary.count} Selesai</span>
-                                        </div>
-
+                                        <div className="flex justify-between items-center px-1"><h3 className="font-bold text-slate-700">Riwayat Tugas</h3><span className="text-xs text-slate-400">{personalSummary.count} Selesai</span></div>
                                         {personalAssignments.length === 0 ? (
-                                            <div className="text-center py-8 border-2 border-dashed border-slate-200 rounded-xl">
-                                                <p className="text-slate-400 text-sm">Belum ada tugas yang dikirim/dinilai.</p>
-                                            </div>
+                                            <div className="text-center py-8 border-2 border-dashed border-slate-200 rounded-xl"><p className="text-slate-400 text-sm">Belum ada tugas yang dikirim/dinilai.</p></div>
                                         ) : (
                                             <div className="space-y-3">
                                                 {personalAssignments.map(tugas => (
                                                     <div key={tugas.id} className="bg-white rounded-xl p-4 shadow-sm border border-slate-100">
                                                         <div className="flex justify-between items-start mb-3 border-b border-slate-50 pb-2">
-                                                            <div>
-                                                                <h3 className="font-bold text-slate-800">{tugas.subject}</h3>
-                                                                <p className="text-[10px] text-slate-400">{new Date(tugas.timestamp).toLocaleDateString()}</p>
-                                                            </div>
-                                                            <span className={`px-2 py-0.5 rounded text-[10px] font-bold border ${tugas.status === 'Dinilai' ? 'bg-green-50 text-green-700 border-green-200' : 'bg-yellow-50 text-yellow-700 border-yellow-200'}`}>
-                                                                {tugas.status}
-                                                            </span>
+                                                            <div><h3 className="font-bold text-slate-800">{tugas.subject}</h3><p className="text-[10px] text-slate-400">{new Date(tugas.timestamp).toLocaleDateString()}</p></div>
+                                                            <span className={`px-2 py-0.5 rounded text-[10px] font-bold border ${tugas.status === 'Dinilai' ? 'bg-green-50 text-green-700 border-green-200' : 'bg-yellow-50 text-yellow-700 border-yellow-200'}`}>{tugas.status}</span>
                                                         </div>
-                                                        
                                                         {tugas.status === 'Dinilai' && tugas.grade ? (
                                                             <div>
                                                                 <div className="grid grid-cols-2 gap-2 mb-3">
-                                                                    <div className="flex justify-between items-center bg-slate-50 px-3 py-2 rounded-lg">
-                                                                        <span className="text-xs text-slate-500">Menulis</span>
-                                                                        <span className="font-bold text-blue-600">{tugas.grade.writingScore}</span>
-                                                                    </div>
-                                                                    <div className="flex justify-between items-center bg-slate-50 px-3 py-2 rounded-lg">
-                                                                        <span className="text-xs text-slate-500">Hafalan</span>
-                                                                        <span className="font-bold text-orange-600">{tugas.grade.recitationScore}</span>
-                                                                    </div>
+                                                                    <div className="flex justify-between items-center bg-slate-50 px-3 py-2 rounded-lg"><span className="text-xs text-slate-500">Menulis</span><span className="font-bold text-blue-600">{tugas.grade.writingScore}</span></div>
+                                                                    <div className="flex justify-between items-center bg-slate-50 px-3 py-2 rounded-lg"><span className="text-xs text-slate-500">Hafalan</span><span className="font-bold text-orange-600">{tugas.grade.recitationScore}</span></div>
                                                                 </div>
-                                                                
-                                                                <button 
-                                                                    onClick={() => setSelectedAssignment(tugas)}
-                                                                    className="w-full py-2 bg-green-50 text-green-700 text-xs font-bold rounded-lg hover:bg-green-100 flex items-center justify-center gap-1 border border-green-100"
-                                                                >
-                                                                    <i data-lucide="eye" width="14"></i> LIHAT KOREKSI
-                                                                </button>
+                                                                <button onClick={() => setSelectedAssignment(tugas)} className="w-full py-2 bg-green-50 text-green-700 text-xs font-bold rounded-lg hover:bg-green-100 flex items-center justify-center gap-1 border border-green-100"><i data-lucide="eye" width="14"></i> LIHAT KOREKSI</button>
                                                             </div>
-                                                        ) : (
-                                                            <p className="text-center text-xs text-slate-400 italic py-2">Sedang diperiksa guru...</p>
-                                                        )}
+                                                        ) : (<p className="text-center text-xs text-slate-400 italic py-2">Sedang diperiksa guru...</p>)}
                                                     </div>
                                                 ))}
                                             </div>
@@ -619,33 +374,21 @@
                             </div>
                         )}
                     </div>
-
                     <div className="fixed bottom-0 w-full max-w-md bg-white border-t border-slate-200 flex justify-around p-3 pb-6 text-xs font-medium text-slate-400 shadow-[0_-5px_10px_rgba(0,0,0,0.02)] z-50">
-                        <button onClick={() => setActiveTab('home')} className={`flex flex-col items-center gap-1 transition-colors ${activeTab === 'home' ? 'text-green-600 font-bold' : 'hover:text-slate-600'}`}>
-                            <i data-lucide="home" width="22" className={activeTab === 'home' ? 'fill-green-100' : ''}></i> Beranda
-                        </button>
-                        <button onClick={() => setActiveTab('tasks')} className={`flex flex-col items-center gap-1 transition-colors ${activeTab === 'tasks' ? 'text-green-600 font-bold' : 'hover:text-slate-600'}`}>
-                            <div className="relative">
-                                <i data-lucide="award" width="22" className={activeTab === 'tasks' ? 'fill-green-100' : ''}></i>
-                                {(personalAssignments.filter(a => a.status === 'Dinilai').length > 0 && formName) && (
-                                    <span className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-red-500 rounded-full border-2 border-white"></span>
-                                )}
-                            </div>
-                            Nilai
-                        </button>
+                        <button onClick={() => setActiveTab('home')} className={`flex flex-col items-center gap-1 transition-colors ${activeTab === 'home' ? 'text-green-600 font-bold' : 'hover:text-slate-600'}`}><i data-lucide="home" width="22" className={activeTab === 'home' ? 'fill-green-100' : ''}></i> Beranda</button>
+                        <button onClick={() => setActiveTab('tasks')} className={`flex flex-col items-center gap-1 transition-colors ${activeTab === 'tasks' ? 'text-green-600 font-bold' : 'hover:text-slate-600'}`}><div className="relative"><i data-lucide="award" width="22" className={activeTab === 'tasks' ? 'fill-green-100' : ''}/>{(personalAssignments.filter(a => a.status === 'Dinilai').length > 0 && formName) && (<span className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-red-500 rounded-full border-2 border-white"></span>)}</div>Nilai</button>
                     </div>
                 </div>
             );
         };
 
         // ----------------------------------------------------------------------
-        // KOMPONEN: APLIKASI GURU
+        // KOMPONEN: APLIKASI GURU (SIMPLIFIED FOR SHEET SYNC)
         // ----------------------------------------------------------------------
-        const TeacherApp = ({ onExit, assignments, setAssignments, students, setStudents, subjects, setSubjects }) => {
-            const [activeView, setActiveView] = useState('inbox'); // inbox, students, subjects
+        const TeacherApp = ({ onExit, assignments, setAssignments, students, subjects }) => {
+            const [activeView, setActiveView] = useState('inbox');
             const [gradingId, setGradingId] = useState(null);
             
-            // Grading Form
             const [writingScore, setWritingScore] = useState('');
             const [recitationScore, setRecitationScore] = useState('');
             const [comment, setComment] = useState('');
@@ -654,29 +397,22 @@
             const [isRecFb, setIsRecFb] = useState(false);
             const mrRefFb = useRef(null);
             const chunksRefFb = useRef([]);
-
-            // Student Management
-            const [newStudentName, setNewStudentName] = useState('');
-            const [newStudentClass, setNewStudentClass] = useState('');
-
-            // Subject Management
-            const [newSubject, setNewSubject] = useState('');
-
-            // Filter State
             const [filterClass, setFilterClass] = useState('all');
 
-            // --- GRADING FUNCTIONS ---
+            const classList = useMemo(() => [...new Set(students.map(s => s.className))].sort(), [students]);
+            
+            const filteredAssignments = useMemo(() => {
+                if (filterClass === 'all') return assignments;
+                return assignments.filter(a => a.className === filterClass);
+            }, [assignments, filterClass]);
+
             const openGrading = (id) => {
                 const task = assignments.find(a => a.id === id);
                 setGradingId(id);
                 if(task.grade) {
-                    setWritingScore(task.grade.writingScore);
-                    setRecitationScore(task.grade.recitationScore);
-                    setComment(task.grade.feedbackText);
+                    setWritingScore(task.grade.writingScore); setRecitationScore(task.grade.recitationScore); setComment(task.grade.feedbackText);
                 } else {
-                    setWritingScore('');
-                    setRecitationScore('');
-                    setComment('');
+                    setWritingScore(''); setRecitationScore(''); setComment('');
                 }
                 setFbImg(null); setFbAudBlob(null);
             };
@@ -685,11 +421,9 @@
                 const updatedAssignments = assignments.map(task => {
                     if(task.id === gradingId) {
                         return {
-                            ...task,
-                            status: "Dinilai",
+                            ...task, status: "Dinilai",
                             grade: {
-                                writingScore: writingScore || 0,
-                                recitationScore: recitationScore || 0,
+                                writingScore: writingScore || 0, recitationScore: recitationScore || 0,
                                 feedbackText: comment,
                                 feedbackImage: fbImg ? URL.createObjectURL(fbImg) : task.grade?.feedbackImage,
                                 feedbackAudio: fbAudBlob ? URL.createObjectURL(fbAudBlob) : task.grade?.feedbackAudio
@@ -703,350 +437,78 @@
                 alert("Nilai berhasil disimpan!");
             };
 
-            const startRecFb = async () => {
-                try {
-                    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-                    mrRefFb.current = new MediaRecorder(stream);
-                    chunksRefFb.current = [];
-                    mrRefFb.current.ondataavailable = e => chunksRefFb.current.push(e.data);
-                    mrRefFb.current.onstop = () => {
-                        setFbAudBlob(new Blob(chunksRefFb.current, {type: 'audio/wav'}));
-                    };
-                    mrRefFb.current.start();
-                    setIsRecFb(true);
-                } catch(e) { alert("Mic error"); }
-            };
+            const startRecFb = async () => { try { const stream = await navigator.mediaDevices.getUserMedia({ audio: true }); mrRefFb.current = new MediaRecorder(stream); chunksRefFb.current = []; mrRefFb.current.ondataavailable = e => chunksRefFb.current.push(e.data); mrRefFb.current.onstop = () => { setFbAudBlob(new Blob(chunksRefFb.current, {type: 'audio/wav'})); }; mrRefFb.current.start(); setIsRecFb(true); } catch(e) { alert("Mic error"); } };
             const stopRecFb = () => { if(mrRefFb.current) { mrRefFb.current.stop(); setIsRecFb(false); } };
 
-            // --- DATA MANAGEMENT FUNCTIONS ---
-            
-            // Add Single Student
-            const addStudent = () => {
-                if(newStudentName && newStudentClass) {
-                    const newId = students.length > 0 ? Math.max(...students.map(s => s.id)) + 1 : 1;
-                    setStudents([...students, { id: newId, name: newStudentName, className: newStudentClass }]);
-                    setNewStudentName('');
-                    setNewStudentClass('');
-                    alert("Siswa ditambahkan");
-                }
-            };
-
-            // Remove Student
-            const removeStudent = (id) => {
-                if(confirm("Hapus siswa ini?")) {
-                    setStudents(students.filter(s => s.id !== id));
-                }
-            };
-
-            // Import Excel
-            const handleFileUpload = (e) => {
-                const file = e.target.files[0];
-                if (!file) return;
-
-                const reader = new FileReader();
-                reader.onload = (evt) => {
-                    const bstr = evt.target.result;
-                    const wb = XLSX.read(bstr, { type: 'binary' });
-                    const wsname = wb.SheetNames[0];
-                    const ws = wb.Sheets[wsname];
-                    const data = XLSX.utils.sheet_to_json(ws);
-                    
-                    // Assuming Excel has "Nama" and "Kelas" columns
-                    const importedStudents = data.map((row, index) => ({
-                        id: Date.now() + index,
-                        name: row['Nama'] || row['nama'] || 'Tanpa Nama',
-                        className: row['Kelas'] || row['kelas'] || 'Umum'
-                    }));
-
-                    if(importedStudents.length > 0) {
-                        setStudents([...students, ...importedStudents]);
-                        alert(`Berhasil import ${importedStudents.length} siswa!`);
-                    } else {
-                        alert("Format Excel tidak sesuai. Pastikan ada kolom 'Nama' dan 'Kelas'.");
-                    }
-                };
-                reader.readAsBinaryString(file);
-            };
-
-            // Add Subject
-            const addSubject = () => {
-                if(newSubject && !subjects.includes(newSubject)) {
-                    setSubjects([...subjects, newSubject]);
-                    setNewSubject('');
-                }
-            };
-            
-            // Remove Subject
-            const removeSubject = (sub) => {
-                if(confirm(`Hapus mapel ${sub}?`)) {
-                    setSubjects(subjects.filter(s => s !== sub));
-                }
-            };
-
-            // --- FILTERING ---
-            const classList = useMemo(() => [...new Set(students.map(s => s.className))].sort(), [students]);
-            
-            const filteredAssignments = useMemo(() => {
-                if (filterClass === 'all') return assignments;
-                return assignments.filter(a => a.className === filterClass);
-            }, [assignments, filterClass]);
-
-
-            // --- RENDER MODAL GRADING ---
             if (gradingId) {
                 const task = assignments.find(a => a.id === gradingId);
                 return (
                     <div className="bg-slate-50 min-h-screen p-4 pb-20 font-sans">
                         <div className="bg-white p-4 sticky top-0 z-40 shadow-sm mb-4 rounded-xl flex items-center justify-between">
-                            <button onClick={() => setGradingId(null)} className="text-slate-500 font-bold text-sm flex items-center gap-1">
-                                <i data-lucide="x" width="18"></i> Batal
-                            </button>
-                            <span className="font-bold text-slate-800">Mode Koreksi</span>
-                            <div className="w-8"></div>
+                            <button onClick={() => setGradingId(null)} className="text-slate-500 font-bold text-sm flex items-center gap-1"><i data-lucide="x" width="18"></i> Batal</button>
+                            <span className="font-bold text-slate-800">Mode Koreksi</span><div className="w-8"></div>
                         </div>
-                        
                         <div className="bg-white rounded-2xl p-5 shadow-sm mb-4 border border-slate-100">
                             <h2 className="text-xl font-bold text-slate-800 mb-1">{task.studentName}</h2>
                             <p className="text-sm text-slate-500 mb-4 bg-slate-100 inline-block px-2 py-1 rounded">{task.className} - {task.subject}</p>
-                            
                             <div className="space-y-4">
-                                {task.files.image && (
-                                    <div>
-                                        <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">Lampiran Foto</span>
-                                        <div className="mt-1 rounded-xl overflow-hidden border border-slate-200">
-                                            <img src={task.files.image instanceof File ? URL.createObjectURL(task.files.image) : "https://placehold.co/400x300/e2e8f0/64748b?text=Contoh+Tugas"} className="w-full" alt="tugas"/>
-                                        </div>
-                                    </div>
-                                )}
-                                {task.files.audio && (
-                                    <div>
-                                        <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">Lampiran Suara</span>
-                                        <audio controls src={task.files.audio} className="w-full mt-1" />
-                                    </div>
-                                )}
+                                {task.files.image && (<div><span className="text-xs font-bold text-slate-400 uppercase tracking-wider">Lampiran Foto</span><div className="mt-1 rounded-xl overflow-hidden border border-slate-200"><img src={task.files.image instanceof File ? URL.createObjectURL(task.files.image) : "https://placehold.co/400x300/e2e8f0/64748b?text=Contoh+Tugas"} className="w-full" alt="tugas"/></div></div>)}
+                                {task.files.audio && (<div><span className="text-xs font-bold text-slate-400 uppercase tracking-wider">Lampiran Suara</span><audio controls src={task.files.audio} className="w-full mt-1" /></div>)}
                             </div>
                         </div>
-
                         <div className="bg-orange-50 border border-orange-100 rounded-2xl p-5 shadow-sm space-y-5">
-                            <div className="flex items-center gap-2 border-b border-orange-200 pb-2">
-                                <i data-lucide="award" width="20" className="text-orange-600"></i>
-                                <h3 className="font-bold text-orange-800">Form Penilaian Rinci</h3>
-                            </div>
-                            
+                            <div className="flex items-center gap-2 border-b border-orange-200 pb-2"><i data-lucide="award" width="20" className="text-orange-600"></i><h3 className="font-bold text-orange-800">Form Penilaian Rinci</h3></div>
                             <div className="grid grid-cols-2 gap-4">
-                                <div>
-                                    <label className="text-[10px] font-bold text-orange-700 uppercase mb-1 block">Tugas Menulis</label>
-                                    <input type="number" value={writingScore} onChange={e=>setWritingScore(e.target.value)} className="w-full p-3 rounded-xl border-2 border-orange-200 text-2xl font-bold text-center outline-none focus:border-blue-500 text-blue-600 bg-white" placeholder="0" />
-                                </div>
-                                <div>
-                                    <label className="text-[10px] font-bold text-orange-700 uppercase mb-1 block">Tugas Hafalan</label>
-                                    <input type="number" value={recitationScore} onChange={e=>setRecitationScore(e.target.value)} className="w-full p-3 rounded-xl border-2 border-orange-200 text-2xl font-bold text-center outline-none focus:border-green-500 text-green-600 bg-white" placeholder="0" />
-                                </div>
+                                <div><label className="text-[10px] font-bold text-orange-700 uppercase mb-1 block">Tugas Menulis</label><input type="number" value={writingScore} onChange={e=>setWritingScore(e.target.value)} className="w-full p-3 rounded-xl border-2 border-orange-200 text-2xl font-bold text-center outline-none focus:border-blue-500 text-blue-600 bg-white" placeholder="0" /></div>
+                                <div><label className="text-[10px] font-bold text-orange-700 uppercase mb-1 block">Tugas Hafalan</label><input type="number" value={recitationScore} onChange={e=>setRecitationScore(e.target.value)} className="w-full p-3 rounded-xl border-2 border-orange-200 text-2xl font-bold text-center outline-none focus:border-green-500 text-green-600 bg-white" placeholder="0" /></div>
                             </div>
-
-                            <div>
-                                <label className="text-xs font-bold text-orange-700 uppercase mb-1 block">Komentar Teks</label>
-                                <textarea rows="3" value={comment} onChange={e=>setComment(e.target.value)} className="w-full p-3 rounded-xl border border-orange-200 text-sm outline-none focus:ring-2 focus:ring-orange-300 bg-white" placeholder="Tulis masukan..."></textarea>
-                            </div>
-
+                            <div><label className="text-xs font-bold text-orange-700 uppercase mb-1 block">Komentar Teks</label><textarea rows="3" value={comment} onChange={e=>setComment(e.target.value)} className="w-full p-3 rounded-xl border border-orange-200 text-sm outline-none focus:ring-2 focus:ring-orange-300 bg-white" placeholder="Tulis masukan..."></textarea></div>
                             <div className="grid grid-cols-2 gap-3">
-                                <div className="bg-white p-3 rounded-xl border border-orange-100 text-center">
-                                    <span className="text-[10px] font-bold text-slate-400 block mb-2 uppercase">Upload Coretan</span>
-                                    <label className="block bg-orange-100 hover:bg-orange-200 text-orange-700 py-2 rounded-lg cursor-pointer text-xs font-bold transition-colors">
-                                        {fbImg ? 'Ganti Foto' : 'Pilih Foto'}
-                                        <input type="file" accept="image/*" className="hidden" onChange={e => e.target.files && setFbImg(e.target.files[0])} />
-                                    </label>
-                                    {fbImg && <span className="text-[10px] text-green-500 block mt-1">Foto dipilih</span>}
-                                </div>
-                                <div className="bg-white p-3 rounded-xl border border-orange-100 text-center">
-                                    <span className="text-[10px] font-bold text-slate-400 block mb-2 uppercase">Rekam Suara</span>
-                                    <button onClick={isRecFb ? stopRecFb : startRecFb} className={`w-full py-2 rounded-lg text-xs font-bold transition-all ${isRecFb ? 'bg-red-500 text-white animate-pulse' : 'bg-orange-100 text-orange-700 hover:bg-orange-200'}`}>
-                                        {isRecFb ? 'Stop' : 'Rekam'}
-                                    </button>
-                                    {fbAudBlob && <span className="text-[10px] text-green-500 block mt-1">Audio tersimpan</span>}
-                                </div>
+                                <div className="bg-white p-3 rounded-xl border border-orange-100 text-center"><span className="text-[10px] font-bold text-slate-400 block mb-2 uppercase">Upload Coretan</span><label className="block bg-orange-100 hover:bg-orange-200 text-orange-700 py-2 rounded-lg cursor-pointer text-xs font-bold transition-colors">{fbImg ? 'Ganti Foto' : 'Pilih Foto'}<input type="file" accept="image/*" className="hidden" onChange={e => e.target.files && setFbImg(e.target.files[0])} /></label>{fbImg && <span className="text-[10px] text-green-500 block mt-1">Foto dipilih</span>}</div>
+                                <div className="bg-white p-3 rounded-xl border border-orange-100 text-center"><span className="text-[10px] font-bold text-slate-400 block mb-2 uppercase">Rekam Suara</span><button onClick={isRecFb ? stopRecFb : startRecFb} className={`w-full py-2 rounded-lg text-xs font-bold transition-all ${isRecFb ? 'bg-red-500 text-white animate-pulse' : 'bg-orange-100 text-orange-700 hover:bg-orange-200'}`}>{isRecFb ? 'Stop' : 'Rekam'}</button>{fbAudBlob && <span className="text-[10px] text-green-500 block mt-1">Audio tersimpan</span>}</div>
                             </div>
-
-                            <button onClick={submitGrade} className="w-full bg-orange-600 text-white font-bold py-4 rounded-xl shadow-lg shadow-orange-200 hover:bg-orange-700 transition-colors mt-2 text-lg">
-                                SIMPAN NILAI
-                            </button>
+                            <button onClick={submitGrade} className="w-full bg-orange-600 text-white font-bold py-4 rounded-xl shadow-lg shadow-orange-200 hover:bg-orange-700 transition-colors mt-2 text-lg">SIMPAN NILAI</button>
                         </div>
                     </div>
                 );
             }
 
-            // --- RENDER MAIN TEACHER VIEW ---
             return (
                 <div className="bg-slate-50 min-h-screen pb-20 relative font-sans">
-                    {/* Header */}
-                    <div className="bg-orange-600 p-4 sticky top-0 z-40 shadow-lg flex justify-between items-center text-white">
-                        <h1 className="font-bold text-lg flex items-center gap-2">
-                            <i data-lucide="graduation-cap" width="24" className="text-orange-200"></i> Ruang Guru
-                        </h1>
-                        <button onClick={onExit} className="text-xs bg-orange-700 border border-orange-500 px-3 py-1.5 rounded-full hover:bg-orange-800 transition-colors font-semibold">Keluar</button>
-                    </div>
-
-                    {/* Navigasi Tab Guru */}
+                    <div className="bg-orange-600 p-4 sticky top-0 z-40 shadow-lg flex justify-between items-center text-white"><h1 className="font-bold text-lg flex items-center gap-2"><i data-lucide="graduation-cap" width="24" className="text-orange-200"></i> Ruang Guru</h1><button onClick={onExit} className="text-xs bg-orange-700 border border-orange-500 px-3 py-1.5 rounded-full hover:bg-orange-800 transition-colors font-semibold">Keluar</button></div>
                     <div className="flex bg-white border-b border-slate-200 p-2 gap-2 overflow-x-auto">
                         <button onClick={() => setActiveView('inbox')} className={`px-4 py-2 rounded-lg text-sm font-bold whitespace-nowrap ${activeView === 'inbox' ? 'bg-orange-100 text-orange-700' : 'text-slate-500'}`}>Koreksi Tugas</button>
                         <button onClick={() => setActiveView('students')} className={`px-4 py-2 rounded-lg text-sm font-bold whitespace-nowrap ${activeView === 'students' ? 'bg-orange-100 text-orange-700' : 'text-slate-500'}`}>Data Siswa</button>
                         <button onClick={() => setActiveView('subjects')} className={`px-4 py-2 rounded-lg text-sm font-bold whitespace-nowrap ${activeView === 'subjects' ? 'bg-orange-100 text-orange-700' : 'text-slate-500'}`}>Data Mapel</button>
                     </div>
-
                     <div className="p-4 space-y-4">
-                        
-                        {/* VIEW: INBOX / KOREKSI */}
                         {activeView === 'inbox' && (
                             <>
-                                {/* Filter Bar */}
-                                <div className="flex items-center gap-2 bg-white p-3 rounded-xl border border-slate-100 shadow-sm">
-                                    <i data-lucide="filter" width="16" className="text-slate-400"></i>
-                                    <select 
-                                        value={filterClass} 
-                                        onChange={(e) => setFilterClass(e.target.value)} 
-                                        className="bg-transparent text-sm font-semibold text-slate-600 outline-none w-full"
-                                    >
-                                        <option value="all">Semua Kelas</option>
-                                        {classList.length > 0 ? (
-                                            classList.map(c => (
-                                                <option key={c} value={c}>Kelas {c}</option>
-                                            ))
-                                        ) : (
-                                            <option value="all" disabled>Belum ada data kelas</option>
-                                        )}
-                                    </select>
-                                </div>
-
+                                <div className="flex items-center gap-2 bg-white p-3 rounded-xl border border-slate-100 shadow-sm"><i data-lucide="filter" width="16" className="text-slate-400"></i><select value={filterClass} onChange={(e) => setFilterClass(e.target.value)} className="bg-transparent text-sm font-semibold text-slate-600 outline-none w-full"><option value="all">Semua Kelas</option>{classList.length > 0 ? (classList.map(c => <option key={c} value={c}>Kelas {c}</option>)) : (<option value="all" disabled>Belum ada data kelas</option>)}</select></div>
                                 <div className="flex gap-2 mb-2 overflow-x-auto pb-2 scrollbar-hide">
-                                    <div className="bg-white px-5 py-2.5 rounded-full border border-orange-200 text-orange-700 font-bold text-sm whitespace-nowrap shadow-sm">
-                                        Perlu Dinilai <span className="ml-1 bg-orange-100 px-2 py-0.5 rounded-full text-xs">{filteredAssignments.filter(a => a.status === 'Menunggu').length}</span>
-                                    </div>
-                                    <div className="bg-transparent px-5 py-2.5 rounded-full border border-slate-200 text-slate-500 font-medium text-sm whitespace-nowrap hover:bg-white transition-colors">
-                                        Selesai <span className="ml-1 bg-slate-200 px-2 py-0.5 rounded-full text-xs">{filteredAssignments.filter(a => a.status === 'Dinilai').length}</span>
-                                    </div>
+                                    <div className="bg-white px-5 py-2.5 rounded-full border border-orange-200 text-orange-700 font-bold text-sm whitespace-nowrap shadow-sm">Perlu Dinilai <span className="ml-1 bg-orange-100 px-2 py-0.5 rounded-full text-xs">{filteredAssignments.filter(a => a.status === 'Menunggu').length}</span></div>
+                                    <div className="bg-transparent px-5 py-2.5 rounded-full border border-slate-200 text-slate-500 font-medium text-sm whitespace-nowrap hover:bg-white transition-colors">Selesai <span className="ml-1 bg-slate-200 px-2 py-0.5 rounded-full text-xs">{filteredAssignments.filter(a => a.status === 'Dinilai').length}</span></div>
                                 </div>
-
-                                {filteredAssignments.length === 0 ? (
-                                    <div className="text-center py-10">
-                                        <p className="text-slate-400">Tidak ada tugas (Filter: {filterClass === 'all' ? 'Semua' : filterClass})</p>
-                                    </div>
-                                ) : (
-                                    filteredAssignments.map(task => (
-                                        <div key={task.id} className="bg-white p-5 rounded-2xl shadow-sm border border-slate-100 flex justify-between items-center transition-transform active:scale-[0.99]">
-                                            <div>
-                                                <h3 className="font-bold text-slate-800 text-lg">{task.studentName}</h3>
-                                                <p className="text-xs text-slate-500 font-medium">{task.subject} • {task.className}</p>
-                                                <span className={`text-[10px] px-2 py-0.5 rounded mt-2 inline-block font-bold uppercase tracking-wide ${task.status === 'Menunggu' ? 'bg-red-50 text-red-600 border border-red-100' : 'bg-green-50 text-green-600 border border-green-100'}`}>
-                                                    {task.status}
-                                                </span>
-                                            </div>
-                                            <button 
-                                                onClick={() => openGrading(task.id)}
-                                                className={`px-5 py-2.5 rounded-xl text-sm font-bold shadow-sm transition-colors ${task.status === 'Menunggu' ? 'bg-orange-600 text-white hover:bg-orange-700' : 'bg-slate-100 text-slate-500 hover:bg-slate-200'}`}
-                                            >
-                                                {task.status === 'Menunggu' ? 'NILAI' : 'EDIT'}
-                                            </button>
-                                        </div>
-                                    ))
-                                )}
+                                {filteredAssignments.length === 0 ? (<div className="text-center py-10"><p className="text-slate-400">Tidak ada tugas.</p></div>) : (filteredAssignments.map(task => (<div key={task.id} className="bg-white p-5 rounded-2xl shadow-sm border border-slate-100 flex justify-between items-center transition-transform active:scale-[0.99]"><div><h3 className="font-bold text-slate-800 text-lg">{task.studentName}</h3><p className="text-xs text-slate-500 font-medium">{task.subject} • {task.className}</p><span className={`text-[10px] px-2 py-0.5 rounded mt-2 inline-block font-bold uppercase tracking-wide ${task.status === 'Menunggu' ? 'bg-red-50 text-red-600 border border-red-100' : 'bg-green-50 text-green-600 border border-green-100'}`}>{task.status}</span></div><button onClick={() => openGrading(task.id)} className={`px-5 py-2.5 rounded-xl text-sm font-bold shadow-sm transition-colors ${task.status === 'Menunggu' ? 'bg-orange-600 text-white hover:bg-orange-700' : 'bg-slate-100 text-slate-500 hover:bg-slate-200'}`}>{task.status === 'Menunggu' ? 'NILAI' : 'EDIT'}</button></div>)))}
                             </>
                         )}
-
-                        {/* VIEW: DATA SISWA */}
+                        {/* Halaman Siswa & Mapel sekarang hanya Read-Only dengan instruksi */}
                         {activeView === 'students' && (
                             <div className="space-y-6">
-                                {/* Form Tambah Manual */}
-                                <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
-                                    <h3 className="font-bold text-slate-700 mb-3 flex items-center gap-2">
-                                        <i data-lucide="plus" width="18" className="text-orange-600"></i> Tambah Siswa Manual
-                                    </h3>
-                                    <div className="flex gap-2 mb-2">
-                                        <input 
-                                            value={newStudentName}
-                                            onChange={(e) => setNewStudentName(e.target.value)}
-                                            placeholder="Nama Siswa"
-                                            className="w-2/3 p-2 border rounded-lg text-sm"
-                                        />
-                                        <input 
-                                            value={newStudentClass}
-                                            onChange={(e) => setNewStudentClass(e.target.value)}
-                                            placeholder="Kelas (1A)"
-                                            className="w-1/3 p-2 border rounded-lg text-sm"
-                                        />
-                                    </div>
-                                    <button onClick={addStudent} className="w-full bg-slate-800 text-white py-2 rounded-lg text-sm font-bold">Simpan</button>
+                                <div className="bg-blue-50 p-4 rounded-xl border border-blue-200 text-blue-800 text-sm">
+                                    <p className="font-bold mb-2 flex items-center gap-2"><i data-lucide="file-spreadsheet" width="18"></i> Kelola di Google Sheet</p>
+                                    <p>Untuk menambah/menghapus siswa, silakan edit langsung file <b>DATABASE_JAWARA</b> di Google Drive Anda (Sheet: DATA_SISWA).</p>
                                 </div>
-
-                                {/* Form Import Excel */}
-                                <div className="bg-green-50 p-4 rounded-xl border border-green-200 shadow-sm">
-                                    <h3 className="font-bold text-green-800 mb-2 flex items-center gap-2">
-                                        <i data-lucide="file-spreadsheet" width="18"></i> Import dari Excel
-                                    </h3>
-                                    <p className="text-xs text-green-700 mb-3">Pastikan file Excel (.xlsx) memiliki kolom header: <b>Nama</b> dan <b>Kelas</b>.</p>
-                                    <input 
-                                        type="file" 
-                                        accept=".xlsx, .xls"
-                                        onChange={handleFileUpload}
-                                        className="block w-full text-sm text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-green-100 file:text-green-700 hover:file:bg-green-200"
-                                    />
-                                </div>
-
-                                {/* List Siswa */}
-                                <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
-                                    <div className="bg-slate-100 p-3 font-bold text-slate-600 text-sm border-b">Daftar Siswa ({students.length})</div>
-                                    <div className="max-h-60 overflow-y-auto">
-                                        {students.length === 0 ? (
-                                            <p className="p-4 text-center text-slate-400 text-sm">Belum ada data siswa.</p>
-                                        ) : (
-                                            students.map(s => (
-                                                <div key={s.id} className="p-3 border-b flex justify-between items-center hover:bg-slate-50">
-                                                    <div>
-                                                        <p className="font-bold text-slate-800 text-sm">{s.name}</p>
-                                                        <p className="text-xs text-slate-500">Kelas {s.className}</p>
-                                                    </div>
-                                                    <button onClick={() => removeStudent(s.id)} className="text-red-400 hover:text-red-600">
-                                                        <i data-lucide="trash-2" width="16"></i>
-                                                    </button>
-                                                </div>
-                                            ))
-                                        )}
-                                    </div>
-                                </div>
+                                <div className="bg-white rounded-xl border border-slate-200 overflow-hidden"><div className="bg-slate-100 p-3 font-bold text-slate-600 text-sm border-b">Daftar Siswa ({students.length})</div><div className="max-h-96 overflow-y-auto">{students.length === 0 ? (<p className="p-4 text-center text-slate-400 text-sm">Belum ada data siswa.</p>) : (students.map(s => (<div key={s.id} className="p-3 border-b flex justify-between items-center hover:bg-slate-50"><div><p className="font-bold text-slate-800 text-sm">{s.name}</p><p className="text-xs text-slate-500">Kelas {s.className}</p></div></div>)))}</div></div>
                             </div>
                         )}
-
-                        {/* VIEW: DATA MAPEL */}
                         {activeView === 'subjects' && (
                             <div className="space-y-6">
-                                <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
-                                    <h3 className="font-bold text-slate-700 mb-3 flex items-center gap-2">
-                                        <i data-lucide="book-marked" width="18" className="text-orange-600"></i> Kelola Mapel
-                                    </h3>
-                                    <div className="flex gap-2 mb-2">
-                                        <input 
-                                            value={newSubject}
-                                            onChange={(e) => setNewSubject(e.target.value)}
-                                            placeholder="Nama Mapel Baru..."
-                                            className="w-full p-2 border rounded-lg text-sm"
-                                        />
-                                        <button onClick={addSubject} className="bg-orange-600 text-white px-4 rounded-lg font-bold text-sm">+</button>
-                                    </div>
+                                <div className="bg-blue-50 p-4 rounded-xl border border-blue-200 text-blue-800 text-sm">
+                                    <p className="font-bold mb-2 flex items-center gap-2"><i data-lucide="file-spreadsheet" width="18"></i> Kelola di Google Sheet</p>
+                                    <p>Untuk menambah/menghapus Mapel, silakan edit langsung file <b>DATABASE_JAWARA</b> di Google Drive Anda (Sheet: DATA_MAPEL).</p>
                                 </div>
-
-                                <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
-                                    {subjects.length === 0 ? (
-                                        <p className="p-4 text-center text-slate-400 text-sm">Belum ada mata pelajaran.</p>
-                                    ) : (
-                                        subjects.map(s => (
-                                            <div key={s} className="p-3 border-b flex justify-between items-center hover:bg-slate-50">
-                                                <span className="font-medium text-slate-700 text-sm">{s}</span>
-                                                <button onClick={() => removeSubject(s)} className="text-red-400 hover:text-red-600">
-                                                    <i data-lucide="trash-2" width="16"></i>
-                                                </button>
-                                            </div>
-                                        ))
-                                    )}
-                                </div>
+                                <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">{subjects.length === 0 ? (<p className="p-4 text-center text-slate-400 text-sm">Belum ada mata pelajaran.</p>) : (subjects.map(s => (<div key={s} className="p-3 border-b flex justify-between items-center hover:bg-slate-50"><span className="font-medium text-slate-700 text-sm">{s}</span></div>)))}</div>
                             </div>
                         )}
                     </div>
@@ -1060,71 +522,54 @@
         function App() {
             const [currentPage, setCurrentPage] = useState('cover'); 
             const [userRole, setUserRole] = useState(null); 
+            const [isLoadingData, setIsLoadingData] = useState(false);
             
-            // --- PERSISTENCE: LOAD DARI LOCAL STORAGE SAAT AWAL ---
+            // Local State
             const [assignments, setAssignments] = useState(() => {
                 const saved = localStorage.getItem('jawara_assignments');
                 return saved ? JSON.parse(saved) : INITIAL_ASSIGNMENTS;
             });
-            const [students, setStudents] = useState(() => {
-                const saved = localStorage.getItem('jawara_students');
-                return saved ? JSON.parse(saved) : INITIAL_STUDENTS;
-            });
-            const [subjects, setSubjects] = useState(() => {
-                const saved = localStorage.getItem('jawara_subjects');
-                return saved ? JSON.parse(saved) : INITIAL_SUBJECTS;
-            });
+            const [students, setStudents] = useState([]);
+            const [subjects, setSubjects] = useState([]);
 
-            // --- PERSISTENCE: SAVE KE LOCAL STORAGE SAAT ADA PERUBAHAN ---
-            useEffect(() => {
-                localStorage.setItem('jawara_assignments', JSON.stringify(assignments));
-            }, [assignments]);
-
-            useEffect(() => {
-                localStorage.setItem('jawara_students', JSON.stringify(students));
-            }, [students]);
-
-            useEffect(() => {
-                localStorage.setItem('jawara_subjects', JSON.stringify(subjects));
-            }, [subjects]);
-
-            // Re-render Icons
+            useEffect(() => { localStorage.setItem('jawara_assignments', JSON.stringify(assignments)); }, [assignments]);
+            
+            // Re-run createIcons on every render
             useEffect(() => {
                 if (window.lucide) {
                     window.lucide.createIcons();
                 }
             });
 
+            // --- FETCH DATA DARI GOOGLE SHEET SAAT LOAD ---
+            useEffect(() => {
+                const fetchData = async () => {
+                    if (!GOOGLE_SCRIPT_URL) return;
+                    setIsLoadingData(true);
+                    try {
+                        const response = await fetch(GOOGLE_SCRIPT_URL);
+                        const data = await response.json();
+                        if (data.status === 'success') {
+                            setStudents(data.students || []);
+                            setSubjects(data.subjects || []);
+                        }
+                    } catch (error) {
+                        console.error("Gagal mengambil data:", error);
+                        // Fallback jika offline/gagal (bisa gunakan localStorage lama jika mau)
+                    } finally {
+                        setIsLoadingData(false);
+                    }
+                };
+                fetchData();
+            }, []);
+
             const renderPage = () => {
                 switch(currentPage) {
-                    case 'cover':
-                        return <CoverPage onStart={() => setCurrentPage('roleSelection')} />;
-                    case 'roleSelection':
-                        return <RoleSelection 
-                            onBack={() => setCurrentPage('cover')}
-                            onSelectStudent={() => { setUserRole('student'); setCurrentPage('studentApp'); }}
-                            onSelectTeacher={() => { setUserRole('teacher'); setCurrentPage('teacherApp'); }}
-                        />;
-                    case 'studentApp':
-                        return <StudentApp 
-                            onExit={() => setCurrentPage('cover')}
-                            assignments={assignments}
-                            setAssignments={setAssignments}
-                            students={students}
-                            subjects={subjects}
-                        />;
-                    case 'teacherApp':
-                        return <TeacherApp 
-                            onExit={() => setCurrentPage('cover')}
-                            assignments={assignments}
-                            setAssignments={setAssignments}
-                            students={students}
-                            setStudents={setStudents}
-                            subjects={subjects}
-                            setSubjects={setSubjects}
-                        />;
-                    default:
-                        return <CoverPage />;
+                    case 'cover': return <CoverPage onStart={() => setCurrentPage('roleSelection')} isLoadingData={isLoadingData} />;
+                    case 'roleSelection': return <RoleSelection onBack={() => setCurrentPage('cover')} onSelectStudent={() => { setUserRole('student'); setCurrentPage('studentApp'); }} onSelectTeacher={() => { setUserRole('teacher'); setCurrentPage('teacherApp'); }} />;
+                    case 'studentApp': return <StudentApp onExit={() => setCurrentPage('cover')} assignments={assignments} setAssignments={setAssignments} students={students} subjects={subjects} />;
+                    case 'teacherApp': return <TeacherApp onExit={() => setCurrentPage('cover')} assignments={assignments} setAssignments={setAssignments} students={students} subjects={subjects} />;
+                    default: return <CoverPage />;
                 }
             };
 
