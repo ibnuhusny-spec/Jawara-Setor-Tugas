@@ -41,14 +41,11 @@
         // ======================================================================
         const SCHOOL_NAME = "SDIT QURRATU A'YUN AL-ISLAMI MAROS"; 
         
-        // URL Google Apps Script (Pastikan sudah di-update di sisi Script Editor)
-        const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwWWfR_qjXXeDRAzI7jHDZt6TgOp8-DNwjM1hGcUKxfmaHIbJ26hQ5_d-INiDbNeEIu/exec"; 
+        // PASTE URL GOOGLE APPS SCRIPT ANDA DI SINI
+        const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxDxseP5DydLdUE5qT_I5LKT2dnfTXdJ6M9OVSaEjw2yeeu9KP5spVd93zqwgtYr0ze/exec"; 
         // ======================================================================
 
-        // --- DATA AWAL ---
-        const INITIAL_ASSIGNMENTS = [];
-
-        // --- HELPER: KOMPRESI GAMBAR ---
+        // --- HELPER ---
         const compressImage = (file) => {
             return new Promise((resolve, reject) => {
                 const reader = new FileReader();
@@ -58,23 +55,13 @@
                     img.src = event.target.result;
                     img.onload = () => {
                         const canvas = document.createElement('canvas');
-                        // Resize gambar jika terlalu besar (Max lebar 1000px)
                         const MAX_WIDTH = 1000;
                         let width = img.width;
                         let height = img.height;
-
-                        if (width > MAX_WIDTH) {
-                            height *= MAX_WIDTH / width;
-                            width = MAX_WIDTH;
-                        }
-
-                        canvas.width = width;
-                        canvas.height = height;
-                        
+                        if (width > MAX_WIDTH) { height *= MAX_WIDTH / width; width = MAX_WIDTH; }
+                        canvas.width = width; canvas.height = height;
                         const ctx = canvas.getContext('2d');
                         ctx.drawImage(img, 0, 0, width, height);
-                        
-                        // Kompresi JPEG Kualitas 0.6 (60%) -> Sangat menghemat size
                         const dataUrl = canvas.toDataURL('image/jpeg', 0.6);
                         resolve(dataUrl);
                     }
@@ -84,7 +71,6 @@
             });
         };
 
-        // --- HELPER: AUDIO BLOB TO BASE64 ---
         const blobToBase64 = (blob) => {
             return new Promise((resolve, reject) => {
                 const reader = new FileReader();
@@ -105,20 +91,15 @@
                     <h1 className="text-3xl font-extrabold mb-2 text-yellow-300 drop-shadow-md uppercase font-sans tracking-wide leading-tight">JAWARA<br/>SETOR TUGAS</h1>
                     <div className="h-1 w-16 bg-yellow-400 rounded-full mb-4"></div>
                     <h2 className="text-sm font-bold text-green-50 mb-12 font-sans tracking-wide uppercase whitespace-nowrap overflow-hidden text-ellipsis w-full px-2">{SCHOOL_NAME}</h2>
-                    
                     {isLoadingData ? (
-                        <div className="flex flex-col items-center gap-2 text-green-100 animate-pulse">
-                            <i data-lucide="loader-2" className="animate-spin"></i>
-                            <span className="text-xs">Menghubungkan ke Database...</span>
-                        </div>
+                        <div className="flex flex-col items-center gap-2 text-green-100 animate-pulse"><i data-lucide="loader-2" className="animate-spin"></i><span className="text-xs">Menyinkronkan Data...</span></div>
                     ) : (
                         <button onClick={onStart} className="w-full max-w-[260px] bg-white text-green-900 font-bold py-4 rounded-full shadow-lg hover:bg-green-50 active:scale-95 transition-all flex items-center justify-center gap-2 group border-b-4 border-green-200">
-                            <div className="bg-green-600 rounded-full p-1 text-white flex items-center justify-center"><i data-lucide="play" width="16" height="16"></i></div>
-                            <span className="text-lg">MULAI APLIKASI</span>
+                            <div className="bg-green-600 rounded-full p-1 text-white flex items-center justify-center"><i data-lucide="play" width="16" height="16"></i></div><span className="text-lg">MULAI APLIKASI</span>
                         </button>
                     )}
                 </div>
-                <p className="text-[10px] text-green-200/60 uppercase tracking-widest pb-6">Versi HTML 9.0 (Compressed Upload)</p>
+                <p className="text-[10px] text-green-200/60 uppercase tracking-widest pb-6">Versi HTML 9.2 (Fixed Audio & Tabs)</p>
             </div>
         );
 
@@ -126,21 +107,13 @@
         const RoleSelection = ({ onBack, onSelectStudent, onSelectTeacher }) => {
             const [showLoginModal, setShowLoginModal] = useState(false);
             const [passwordInput, setPasswordInput] = useState('');
-
-            const handleTeacherLogin = () => {
-                if (passwordInput === '123456') { onSelectTeacher(); setShowLoginModal(false); setPasswordInput(''); } 
-                else { alert('Password Salah! (Default: 123456)'); }
-            };
-
+            const handleTeacherLogin = () => { if (passwordInput === '123456') { onSelectTeacher(); setShowLoginModal(false); setPasswordInput(''); } else { alert('Password Salah!'); } };
             return (
                 <div className="flex flex-col min-h-screen bg-slate-50 p-6 pt-12 relative font-sans">
                     {showLoginModal && (
                         <div className="fixed inset-0 z-[60] bg-black/50 flex items-center justify-center p-4">
                             <div className="bg-white rounded-2xl p-6 w-full max-w-sm shadow-2xl animate-bounce-sm">
-                                <div className="flex justify-between items-center mb-4">
-                                    <h3 className="text-lg font-bold text-slate-800 flex items-center gap-2"><i data-lucide="lock" width="20" className="text-orange-600"></i> Keamanan Guru</h3>
-                                    <button onClick={() => setShowLoginModal(false)} className="text-slate-400 hover:text-red-500"><i data-lucide="x" width="24"></i></button>
-                                </div>
+                                <div className="flex justify-between items-center mb-4"><h3 className="text-lg font-bold text-slate-800 flex items-center gap-2"><i data-lucide="lock" width="20" className="text-orange-600"></i> Keamanan Guru</h3><button onClick={() => setShowLoginModal(false)} className="text-slate-400 hover:text-red-500"><i data-lucide="x" width="24"></i></button></div>
                                 <input type="password" value={passwordInput} onChange={(e) => setPasswordInput(e.target.value)} placeholder="Password..." className="w-full p-3 border-2 border-slate-200 rounded-xl mb-4 focus:border-orange-500 outline-none text-center text-lg tracking-widest" autoFocus />
                                 <button onClick={handleTeacherLogin} className="w-full bg-orange-600 text-white font-bold py-3 rounded-xl hover:bg-orange-700 transition-colors">MASUK</button>
                             </div>
@@ -178,110 +151,64 @@
             const mrRef = useRef(null);
             const chunksRef = useRef([]);
 
-            const filteredStudents = useMemo(() => {
-                if(!formClass) return students;
-                return students.filter(s => s.className === formClass);
-            }, [formClass, students]);
-
-            const classList = useMemo(() => {
-                const classes = students.map(s => s.className);
-                return [...new Set(classes)].sort();
-            }, [students]);
-
-            const personalAssignments = useMemo(() => {
-                if (!formName || !formClass) return [];
-                return assignments.filter(a => a.studentName === formName && a.className === formClass);
-            }, [assignments, formName, formClass]);
-
+            const filteredStudents = useMemo(() => (!formClass ? students : students.filter(s => s.className === formClass)), [formClass, students]);
+            const classList = useMemo(() => [...new Set(students.map(s => s.className))].sort(), [students]);
+            const personalAssignments = useMemo(() => (!formName || !formClass ? [] : assignments.filter(a => a.studentName === formName && a.className === formClass)), [assignments, formName, formClass]);
             const personalSummary = useMemo(() => {
                 let totalWriting = 0, totalRecitation = 0, count = 0;
                 personalAssignments.forEach(a => {
                     if(a.status === 'Dinilai' && a.grade) {
-                        totalWriting += parseInt(a.grade.writingScore || 0);
-                        totalRecitation += parseInt(a.grade.recitationScore || 0);
-                        count++;
+                        totalWriting += parseInt(a.grade.writingScore || 0); totalRecitation += parseInt(a.grade.recitationScore || 0); count++;
                     }
                 });
                 return { totalWriting, totalRecitation, count };
             }, [personalAssignments]);
 
             const handleStudentSubmit = async () => {
-                if(!formName || !formClass || (!imgFile && !audBlob)) {
-                    alert("Lengkapi data dan minimal 1 file tugas."); return;
-                }
+                if(!formName || !formClass || (!imgFile && !audBlob)) { alert("Data tidak lengkap (Nama/Kelas/Mapel/File)."); return; }
                 if (!formSubject) { alert("Pilih mata pelajaran."); return; }
 
                 setIsUploading(true);
-                
                 if (GOOGLE_SCRIPT_URL) {
                     try {
-                        // 1. Kompresi Gambar
                         let compressedImage = null;
-                        if (imgFile) {
-                            compressedImage = await compressImage(imgFile);
-                        }
-
-                        // 2. Audio sudah dikompres saat perekaman (settings di startRec)
+                        if (imgFile) compressedImage = await compressImage(imgFile);
+                        
                         let audioBase64 = null;
+                        let audioMimeType = "";
                         if (audBlob) {
                             audioBase64 = await blobToBase64(audBlob);
+                            audioMimeType = audBlob.type;
                         }
 
                         const payload = {
-                            type: "upload",
-                            studentName: formName,
-                            className: formClass,
-                            subject: formSubject,
-                            image: compressedImage,
-                            audio: audioBase64
+                            type: "upload", studentName: formName, className: formClass, subject: formSubject,
+                            image: compressedImage, audio: audioBase64, audioMimeType: audioMimeType
                         };
                         
-                        await fetch(GOOGLE_SCRIPT_URL, {
-                            method: "POST", mode: "no-cors", 
-                            headers: { "Content-Type": "application/json" },
-                            body: JSON.stringify(payload)
-                        });
-                        
+                        await fetch(GOOGLE_SCRIPT_URL, { method: "POST", mode: "no-cors", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
                         alert("Tugas Terkirim ke Cloud!");
                         setTimeout(() => refreshData(), 2000); 
+                    } catch (err) { console.error(err); alert("Gagal koneksi."); }
+                } else { alert("Script URL belum disetting."); }
 
-                    } catch (err) { 
-                        console.error("Upload error:", err);
-                        alert("Gagal koneksi. Coba lagi.");
-                    }
-                } else {
-                    alert("URL Script belum dipasang! Hubungi Admin.");
-                }
-
-                setIsUploading(false);
-                setFormSubject(''); setImgFile(null); setAudBlob(null); setAudUrl(null);
-                setActiveTab('tasks');
+                setIsUploading(false); setFormSubject(''); setImgFile(null); setAudBlob(null); setAudUrl(null); setActiveTab('tasks');
             };
 
             const startRec = async () => {
                 try {
                     const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-                    
-                    // SETTING KOMPRESI AUDIO
-                    let options = { audioBitsPerSecond: 32000 }; // 32 kbps (~240KB/menit)
-                    if (MediaRecorder.isTypeSupported('audio/webm;codecs=opus')) {
-                        options.mimeType = 'audio/webm;codecs=opus';
-                    } else if (MediaRecorder.isTypeSupported('audio/mp4')) {
-                        options.mimeType = 'audio/mp4'; // Safari fallback
-                    }
-
-                    mrRef.current = new MediaRecorder(stream, options);
+                    // Prefer mp4 for safari compat if available, otherwise webm
+                    let mimeType = MediaRecorder.isTypeSupported('audio/mp4') ? 'audio/mp4' : 'audio/webm';
+                    mrRef.current = new MediaRecorder(stream, { mimeType: mimeType, audioBitsPerSecond: 32000 });
                     chunksRef.current = [];
                     mrRef.current.ondataavailable = e => chunksRef.current.push(e.data);
                     mrRef.current.onstop = () => {
-                        // Gunakan mimeType dari recorder untuk Blob
-                        const blob = new Blob(chunksRef.current, { type: mrRef.current.mimeType });
-                        setAudBlob(blob);
-                        setAudUrl(URL.createObjectURL(blob));
+                        const blob = new Blob(chunksRef.current, { type: mimeType });
+                        setAudBlob(blob); setAudUrl(URL.createObjectURL(blob));
                     };
-                    mrRef.current.start();
-                    setIsRec(true);
-                } catch(e) { alert("Butuh izin mikrofon: " + e.message); }
+                    mrRef.current.start(); setIsRec(true);
+                } catch(e) { alert("Izin mikrofon ditolak: " + e.message); }
             };
             const stopRec = () => { if(mrRef.current) { mrRef.current.stop(); setIsRec(false); } };
 
@@ -291,21 +218,10 @@
                     <div className="bg-slate-50 min-h-screen p-4 pb-20 font-sans">
                         <button onClick={() => setSelectedAssignment(null)} className="mb-4 text-slate-500 font-bold flex items-center gap-1"><i data-lucide="x" width="20"></i> Tutup</button>
                         <div className="bg-white rounded-2xl p-5 shadow-lg border border-slate-200">
-                            <h2 className="text-xl font-bold text-slate-800 mb-2">Detail Koreksi Guru</h2>
-                            <p className="text-sm text-slate-500 mb-4">{task.subject} - {new Date(task.timestamp).toLocaleDateString()}</p>
+                            <h2 className="text-xl font-bold text-slate-800 mb-2">Detail Koreksi</h2>
+                            <p className="text-sm text-slate-500 mb-4">{task.subject}</p>
                             <div className="space-y-4">
-                                <div className="bg-green-50 p-3 rounded-lg border border-green-100">
-                                    <span className="text-xs font-bold text-green-700 uppercase block mb-1">Komentar:</span>
-                                    <p className="text-slate-800 italic">"{task.grade?.feedbackText || '-'}"</p>
-                                </div>
-                                {task.grade?.feedbackAudio && (
-                                    <div>
-                                        <span className="text-xs font-bold text-slate-400 uppercase block mb-1">Pesan Suara:</span>
-                                        <audio src={task.grade.feedbackAudio} controls className="w-full" />
-                                        <a href={task.grade.feedbackAudio} target="_blank" className="text-[10px] text-blue-500 underline mt-1 block text-right">Download Audio</a>
-                                    </div>
-                                )}
-                                {task.grade?.feedbackImage ? (<div><span className="text-xs font-bold text-slate-400 uppercase block mb-1">Coretan Koreksi:</span><img src={task.grade.feedbackImage} className="w-full rounded-lg border" alt="Koreksi" /></div>) : (<p className="text-xs text-slate-400 italic">Tidak ada lampiran gambar.</p>)}
+                                <div className="bg-green-50 p-3 rounded-lg border border-green-100"><span className="text-xs font-bold text-green-700 uppercase block mb-1">Komentar:</span><p className="text-slate-800 italic">"{task.grade?.feedbackText || '-'}"</p></div>
                             </div>
                         </div>
                     </div>
@@ -314,187 +230,90 @@
 
             return (
                 <div className="bg-slate-50 min-h-screen pb-24 relative font-sans">
-                    {isUploading && (<div className="fixed inset-0 bg-black/50 z-[100] flex flex-col items-center justify-center text-white"><i data-lucide="loader-2" width="48" height="48" className="animate-spin mb-2"></i><p className="font-bold">Mengirim & Mengompres...</p></div>)}
-                    <div className="bg-white p-4 sticky top-0 z-40 shadow-sm flex items-center justify-between">
-                        <div className="flex items-center gap-2"><div className="w-8 h-8 bg-green-600 rounded-lg flex items-center justify-center text-white font-bold text-xs shadow-md">JW</div><span className="font-bold text-slate-800 text-sm">Area Murid</span></div>
-                        <button onClick={onExit} className="text-xs text-red-500 font-bold border border-red-200 px-3 py-1.5 rounded-full hover:bg-red-50">Keluar</button>
-                    </div>
-
+                    {isUploading && (<div className="fixed inset-0 bg-black/50 z-[100] flex flex-col items-center justify-center text-white"><i data-lucide="loader-2" width="48" height="48" className="animate-spin mb-2"></i><p className="font-bold">Mengirim...</p></div>)}
+                    <div className="bg-white p-4 sticky top-0 z-40 shadow-sm flex items-center justify-between"><div className="flex items-center gap-2"><div className="w-8 h-8 bg-green-600 rounded-lg flex items-center justify-center text-white font-bold text-xs shadow-md">JW</div><span className="font-bold text-slate-800 text-sm">Area Murid</span></div><button onClick={onExit} className="text-xs text-red-500 font-bold border border-red-200 px-3 py-1.5 rounded-full hover:bg-red-50">Keluar</button></div>
                     <div className="p-4">
                         {activeTab === 'home' && (
                             <div className="space-y-6 fade-in">
-                                <div className="bg-green-600 rounded-3xl p-6 text-white shadow-xl shadow-green-200 relative overflow-hidden">
-                                    <div className="absolute top-0 right-0 w-24 h-24 bg-white opacity-10 rounded-full -mr-8 -mt-8"></div>
-                                    <h2 className="text-xl font-bold mb-1 relative z-10">Setor Tugas Baru</h2>
-                                    <p className="text-green-100 text-sm mb-4 relative z-10">Lengkapi data berikut:</p>
-                                    <div className="space-y-3 relative z-10">
+                                <div className="bg-green-600 rounded-3xl p-6 text-white shadow-xl relative overflow-hidden">
+                                    <h2 className="text-xl font-bold mb-1 relative z-10">Setor Tugas</h2>
+                                    <div className="space-y-3 relative z-10 mt-4">
                                         <div className="flex gap-2">
-                                            <select value={formClass} onChange={e=>setFormClass(e.target.value)} className="w-1/3 p-3 rounded-xl text-slate-800 text-sm outline-none bg-white shadow-sm">
-                                                <option value="">Kelas</option>
-                                                {classList.map(c => <option key={c} value={c}>{c}</option>)}
-                                            </select>
-                                            <select value={formSubject} onChange={e=>setFormSubject(e.target.value)} className="w-2/3 p-3 rounded-xl text-slate-800 text-sm outline-none bg-white shadow-sm">
-                                                <option value="">Pilih Mapel</option>
-                                                {subjects.map(s => <option key={s} value={s}>{s}</option>)}
-                                            </select>
+                                            <select value={formClass} onChange={e=>setFormClass(e.target.value)} className="w-1/3 p-3 rounded-xl text-slate-800 text-sm outline-none bg-white shadow-sm"><option value="">Kelas</option>{classList.map(c => <option key={c} value={c}>{c}</option>)}</select>
+                                            <select value={formSubject} onChange={e=>setFormSubject(e.target.value)} className="w-2/3 p-3 rounded-xl text-slate-800 text-sm outline-none bg-white shadow-sm"><option value="">Mapel</option>{subjects.map(s => <option key={s} value={s}>{s}</option>)}</select>
                                         </div>
-                                        <select value={formName} onChange={e=>setFormName(e.target.value)} className="w-full p-3 rounded-xl text-slate-800 text-sm outline-none shadow-sm bg-white disabled:bg-slate-200" disabled={!formClass}>
-                                            <option value="">{formClass ? "Pilih Nama Anda..." : "Pilih Kelas Dulu"}</option>
-                                            {filteredStudents.map(s => <option key={s.id} value={s.name}>{s.name}</option>)}
-                                        </select>
-                                        {classList.length === 0 && <p className="text-xs text-white bg-red-500/20 p-2 rounded">Data Siswa kosong. Hubungi Guru.</p>}
+                                        <select value={formName} onChange={e=>setFormName(e.target.value)} className="w-full p-3 rounded-xl text-slate-800 text-sm outline-none shadow-sm bg-white disabled:bg-slate-200" disabled={!formClass}><option value="">{formClass ? "Pilih Nama..." : "Pilih Kelas Dulu"}</option>{filteredStudents.map(s => <option key={s.id} value={s.name}>{s.name}</option>)}</select>
                                     </div>
                                 </div>
-
                                 <div className="bg-white rounded-3xl p-5 shadow-sm space-y-4 border border-slate-100">
-                                    <h3 className="font-bold text-slate-700 flex items-center gap-2"><i data-lucide="upload" width="18" className="text-green-600"></i> Lampiran</h3>
-                                    <div className="border-2 border-dashed border-slate-200 rounded-2xl p-4 flex flex-col items-center justify-center bg-slate-50 transition-colors hover:bg-slate-100">
-                                        {imgFile ? (
-                                            <div className="relative w-full"><img src={URL.createObjectURL(imgFile)} className="h-40 w-full object-cover rounded-xl" alt="preview"/><button onClick={()=>setImgFile(null)} className="absolute top-2 right-2 bg-red-500 text-white p-1.5 rounded-full shadow-lg"><i data-lucide="x" width="14"></i></button></div>
-                                        ) : (
-                                            <label className="flex flex-col items-center gap-2 cursor-pointer w-full py-4"><div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center text-blue-600"><i data-lucide="camera" width="24"></i></div><span className="text-sm font-medium text-slate-600">Ambil/Pilih Foto</span><input type="file" accept="image/*" className="hidden" onChange={e => e.target.files && setImgFile(e.target.files[0])} /></label>
-                                        )}
+                                    <h3 className="font-bold text-slate-700 flex items-center gap-2"><i data-lucide="upload" width="18" className="text-green-600"></i> Lampiran (Bisa Keduanya)</h3>
+                                    {/* Image Input */}
+                                    <div className={`border-2 border-dashed rounded-2xl p-4 flex flex-col items-center justify-center transition-colors ${imgFile ? 'border-green-500 bg-green-50' : 'border-slate-200'}`}>
+                                        {imgFile ? (<div className="relative w-full"><img src={URL.createObjectURL(imgFile)} className="h-32 w-full object-cover rounded-xl" alt="preview"/><button onClick={()=>setImgFile(null)} className="absolute top-2 right-2 bg-red-500 text-white p-1 rounded-full"><i data-lucide="x" width="14"></i></button><p className="text-xs text-green-700 text-center mt-1 font-bold">Foto Siap</p></div>) : (<label className="flex flex-col items-center gap-2 cursor-pointer w-full py-2"><i data-lucide="camera" className="text-blue-500" width="24"></i><span className="text-sm font-medium text-slate-600">Ambil Foto</span><input type="file" accept="image/*" className="hidden" onChange={e => e.target.files && setImgFile(e.target.files[0])} /></label>)}
                                     </div>
-                                    <div className="border-2 border-dashed border-slate-200 rounded-2xl p-4 flex items-center justify-center bg-slate-50">
-                                        {audUrl ? (
-                                            <div className="flex items-center gap-2 w-full justify-between px-2 bg-white p-2 rounded-xl shadow-sm border border-slate-100"><audio src={audUrl} controls className="h-8 w-48" /><button onClick={()=>{setAudUrl(null); setAudBlob(null);}} className="text-red-500 bg-red-50 p-2 rounded-lg"><i data-lucide="x" width="16"></i></button></div>
-                                        ) : (
-                                            <button onClick={isRec ? stopRec : startRec} className={`flex items-center gap-3 px-6 py-3 rounded-full text-sm font-bold transition-all w-full justify-center ${isRec ? 'bg-red-500 text-white animate-pulse shadow-lg shadow-red-200' : 'bg-white border-2 border-slate-200 text-slate-600 hover:border-green-400 hover:text-green-600'}`}><i data-lucide="mic" width="18"></i> {isRec ? 'SEDANG MEREKAM...' : 'Rekam Suara'}</button>
-                                        )}
+                                    {/* Audio Input */}
+                                    <div className={`border-2 border-dashed rounded-2xl p-4 flex items-center justify-center ${audUrl ? 'border-green-500 bg-green-50' : 'border-slate-200'}`}>
+                                        {audUrl ? (<div className="flex items-center gap-2 w-full justify-between px-2"><audio src={audUrl} controls className="h-8 w-40" /><button onClick={()=>{setAudUrl(null); setAudBlob(null);}} className="text-red-500"><i data-lucide="x" width="16"></i></button></div>) : (<button onClick={isRec ? stopRec : startRec} className={`flex items-center gap-3 px-6 py-3 rounded-full text-sm font-bold w-full justify-center ${isRec ? 'bg-red-500 text-white animate-pulse' : 'bg-slate-100 text-slate-600'}`}><i data-lucide="mic" width="18"></i> {isRec ? 'STOP REKAM' : 'REKAM SUARA'}</button>)}
                                     </div>
-                                    <button onClick={handleStudentSubmit} className="w-full bg-blue-600 text-white py-4 rounded-2xl font-bold shadow-lg shadow-blue-200 active:scale-95 transition-transform mt-4 flex items-center justify-center gap-2">KIRIM SEKARANG <i data-lucide="check" width="20"></i></button>
+                                    <button onClick={handleStudentSubmit} className="w-full bg-blue-600 text-white py-4 rounded-2xl font-bold shadow-lg shadow-blue-200 active:scale-95 transition-transform mt-2">KIRIM TUGAS</button>
                                 </div>
                             </div>
                         )}
-
                         {activeTab === 'tasks' && (
                             <div className="space-y-6 fade-in">
-                                <div className="bg-white p-4 rounded-xl shadow-sm border border-slate-100">
-                                    <h3 className="text-xs font-bold text-slate-400 uppercase mb-2 flex items-center gap-1"><i data-lucide="search" width="14"></i> Identitas Rapor</h3>
-                                    <div className="flex gap-2">
-                                        <select value={formClass} onChange={e=>setFormClass(e.target.value)} className="w-1/3 p-2 rounded-lg border text-sm bg-slate-50">
-                                            <option value="">Kelas</option>
-                                            {classList.map(c => <option key={c} value={c}>{c}</option>)}
-                                        </select>
-                                        <select value={formName} onChange={e=>setFormName(e.target.value)} className="w-2/3 p-2 rounded-lg border text-sm bg-slate-50 disabled:opacity-50" disabled={!formClass}>
-                                            <option value="">{formClass ? "Pilih Nama..." : "-"}</option>
-                                            {filteredStudents.map(s => <option key={s.id} value={s.name}>{s.name}</option>)}
-                                        </select>
-                                    </div>
-                                </div>
-
-                                {(!formName || !formClass) ? (
-                                     <div className="text-center py-10 opacity-60">
-                                        <div className="w-16 h-16 bg-slate-100 rounded-full flex items-center justify-center mx-auto mb-3"><i data-lucide="user" className="text-slate-400" width="32"></i></div>
-                                        <p className="text-slate-500 text-sm px-8">Silahkan <b>Pilih Kelas & Nama</b> di atas untuk melihat nilai rapor Anda.</p>
-                                     </div>
-                                ) : (
+                                <div className="bg-white p-4 rounded-xl shadow-sm border border-slate-100"><h3 className="text-xs font-bold text-slate-400 uppercase mb-2">Identitas Rapor</h3><div className="flex gap-2"><select value={formClass} onChange={e=>setFormClass(e.target.value)} className="w-1/3 p-2 rounded border text-sm"><option value="">Kelas</option>{classList.map(c => <option key={c} value={c}>{c}</option>)}</select><select value={formName} onChange={e=>setFormName(e.target.value)} className="w-2/3 p-2 rounded border text-sm" disabled={!formClass}><option value="">Pilih Nama...</option>{filteredStudents.map(s => <option key={s.id} value={s.name}>{s.name}</option>)}</select></div></div>
+                                {(!formName || !formClass) ? (<div className="text-center py-10 opacity-60"><p className="text-slate-500 text-sm">Pilih Kelas & Nama untuk melihat nilai.</p></div>) : (
                                     <>
-                                        <div className="text-center"><h2 className="text-lg font-bold text-slate-800">{formName}</h2><p className="text-xs text-slate-500">Kelas {formClass}</p></div>
-                                        <div className="bg-gradient-to-r from-blue-600 to-blue-800 rounded-2xl p-5 text-white shadow-lg">
-                                            <h3 className="text-sm font-bold opacity-80 mb-3 uppercase tracking-wider text-center">Total Poin Saya</h3>
-                                            <div className="grid grid-cols-2 gap-4">
-                                                <div className="bg-white/10 p-3 rounded-xl text-center backdrop-blur-sm border border-white/20"><span className="block text-3xl font-extrabold">{personalSummary.totalWriting}</span><span className="text-[10px] opacity-80 uppercase">Menulis</span></div>
-                                                <div className="bg-white/10 p-3 rounded-xl text-center backdrop-blur-sm border border-white/20"><span className="block text-3xl font-extrabold">{personalSummary.totalRecitation}</span><span className="text-[10px] opacity-80 uppercase">Hafalan</span></div>
-                                            </div>
-                                        </div>
-                                        <div className="flex justify-between items-center px-1"><h3 className="font-bold text-slate-700">Riwayat Tugas</h3><span className="text-xs text-slate-400">{personalSummary.count} Selesai</span></div>
-                                        {personalAssignments.length === 0 ? (
-                                            <div className="text-center py-8 border-2 border-dashed border-slate-200 rounded-xl"><p className="text-slate-400 text-sm">Belum ada tugas yang dikirim/dinilai.</p></div>
-                                        ) : (
-                                            <div className="space-y-3">
-                                                {personalAssignments.map(tugas => (
-                                                    <div key={tugas.id} className="bg-white rounded-xl p-4 shadow-sm border border-slate-100">
-                                                        <div className="flex justify-between items-start mb-3 border-b border-slate-50 pb-2">
-                                                            <div><h3 className="font-bold text-slate-800">{tugas.subject}</h3><p className="text-[10px] text-slate-400">{new Date(tugas.timestamp).toLocaleDateString()}</p></div>
-                                                            <span className={`px-2 py-0.5 rounded text-[10px] font-bold border ${tugas.status === 'Dinilai' ? 'bg-green-50 text-green-700 border-green-200' : 'bg-yellow-50 text-yellow-700 border-yellow-200'}`}>{tugas.status}</span>
-                                                        </div>
-                                                        {tugas.status === 'Dinilai' && tugas.grade ? (
-                                                            <div>
-                                                                <div className="grid grid-cols-2 gap-2 mb-3">
-                                                                    <div className="flex justify-between items-center bg-slate-50 px-3 py-2 rounded-lg"><span className="text-xs text-slate-500">Menulis</span><span className="font-bold text-blue-600">{tugas.grade.writingScore}</span></div>
-                                                                    <div className="flex justify-between items-center bg-slate-50 px-3 py-2 rounded-lg"><span className="text-xs text-slate-500">Hafalan</span><span className="font-bold text-orange-600">{tugas.grade.recitationScore}</span></div>
-                                                                </div>
-                                                                <button onClick={() => setSelectedAssignment(tugas)} className="w-full py-2 bg-green-50 text-green-700 text-xs font-bold rounded-lg hover:bg-green-100 flex items-center justify-center gap-1 border border-green-100"><i data-lucide="eye" width="14"></i> LIHAT KOREKSI</button>
-                                                            </div>
-                                                        ) : (<p className="text-center text-xs text-slate-400 italic py-2">Sedang diperiksa guru...</p>)}
-                                                    </div>
-                                                ))}
-                                            </div>
-                                        )}
+                                        <div className="bg-gradient-to-r from-blue-600 to-blue-800 rounded-2xl p-5 text-white shadow-lg"><h3 className="text-sm font-bold opacity-80 mb-3 text-center">Total Poin Saya</h3><div className="grid grid-cols-2 gap-4"><div className="bg-white/10 p-3 rounded-xl text-center"><span className="block text-3xl font-extrabold">{personalSummary.totalWriting}</span><span className="text-[10px] opacity-80">Menulis</span></div><div className="bg-white/10 p-3 rounded-xl text-center"><span className="block text-3xl font-extrabold">{personalSummary.totalRecitation}</span><span className="text-[10px] opacity-80">Hafalan</span></div></div></div>
+                                        {personalAssignments.length === 0 ? (<p className="text-center text-slate-400 text-sm mt-4">Belum ada tugas.</p>) : (<div className="space-y-3 mt-4">{personalAssignments.map(tugas => (<div key={tugas.id} className="bg-white rounded-xl p-4 shadow-sm border border-slate-100"><div className="flex justify-between items-start mb-2"><div><h3 className="font-bold text-slate-800">{tugas.subject}</h3><p className="text-[10px] text-slate-400">{new Date(tugas.timestamp).toLocaleDateString()}</p></div><span className="px-2 py-0.5 rounded text-[10px] font-bold bg-slate-100">{tugas.status}</span></div>{tugas.status === 'Dinilai' && (<div className="grid grid-cols-2 gap-2 mt-2"><div className="text-xs bg-blue-50 p-2 rounded text-blue-700">Tulis: <b>{tugas.grade.writingScore}</b></div><div className="text-xs bg-orange-50 p-2 rounded text-orange-700">Hafal: <b>{tugas.grade.recitationScore}</b></div></div>)}</div>))}</div>)}
                                     </>
                                 )}
                             </div>
                         )}
                     </div>
                     <div className="fixed bottom-0 w-full max-w-md bg-white border-t border-slate-200 flex justify-around p-3 pb-6 text-xs font-medium text-slate-400 shadow-[0_-5px_10px_rgba(0,0,0,0.02)] z-50">
-                        <button onClick={() => setActiveTab('home')} className={`flex flex-col items-center gap-1 transition-colors ${activeTab === 'home' ? 'text-green-600 font-bold' : 'hover:text-slate-600'}`}><i data-lucide="home" width="22" className={activeTab === 'home' ? 'fill-green-100' : ''}></i> Beranda</button>
+                        <button onClick={() => setActiveTab('home')} className={`flex flex-col items-center gap-1 transition-colors ${activeTab === 'home' ? 'text-green-600 font-bold' : 'hover:text-slate-600'}`}><i data-lucide="home" width="22"></i> Beranda</button>
                         <button onClick={() => setActiveTab('tasks')} className={`flex flex-col items-center gap-1 transition-colors ${activeTab === 'tasks' ? 'text-green-600 font-bold' : 'hover:text-slate-600'}`}><div className="relative"><i data-lucide="award" width="22" className={activeTab === 'tasks' ? 'fill-green-100' : ''}/>{(personalAssignments.filter(a => a.status === 'Dinilai').length > 0 && formName) && (<span className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-red-500 rounded-full border-2 border-white"></span>)}</div>Nilai</button>
                     </div>
                 </div>
             );
         };
 
-        // --- KOMPONEN: APLIKASI GURU (CLOUD SYNC) ---
+        // --- KOMPONEN: APLIKASI GURU ---
         const TeacherApp = ({ onExit, assignments, refreshData, students, subjects }) => {
             const [activeView, setActiveView] = useState('inbox');
             const [gradingId, setGradingId] = useState(null);
             const [isSubmitting, setIsSubmitting] = useState(false);
             
+            // Grading States
+            const [gradingTab, setGradingTab] = useState('image'); 
             const [writingScore, setWritingScore] = useState('');
             const [recitationScore, setRecitationScore] = useState('');
             const [comment, setComment] = useState('');
-            const [fbImg, setFbImg] = useState(null);
-            const [fbAudBlob, setFbAudBlob] = useState(null);
-            const [isRecFb, setIsRecFb] = useState(false);
-            const mrRefFb = useRef(null);
-            const chunksRefFb = useRef([]);
             const [filterClass, setFilterClass] = useState('all');
 
             const classList = useMemo(() => [...new Set(students.map(s => s.className))].sort(), [students]);
-            
-            const filteredAssignments = useMemo(() => {
-                if (filterClass === 'all') return assignments;
-                return assignments.filter(a => a.className === filterClass);
-            }, [assignments, filterClass]);
+            const filteredAssignments = useMemo(() => (filterClass === 'all' ? assignments : assignments.filter(a => a.className === filterClass)), [assignments, filterClass]);
 
             const openGrading = (id) => {
                 const task = assignments.find(a => a.id === id);
                 setGradingId(id);
-                if(task.grade) {
-                    setWritingScore(task.grade.writingScore); setRecitationScore(task.grade.recitationScore); setComment(task.grade.feedbackText);
-                } else {
-                    setWritingScore(''); setRecitationScore(''); setComment('');
-                }
-                setFbImg(null); setFbAudBlob(null);
+                setGradingTab(task.files.image ? 'image' : 'audio'); // Auto select tab
+                if(task.grade) { setWritingScore(task.grade.writingScore); setRecitationScore(task.grade.recitationScore); setComment(task.grade.feedbackText); }
+                else { setWritingScore(''); setRecitationScore(''); setComment(''); }
             };
 
             const submitGrade = async () => {
                 setIsSubmitting(true);
                 if (GOOGLE_SCRIPT_URL) {
                     try {
-                        const payload = {
-                            type: "grade",
-                            assignmentId: gradingId,
-                            writingScore: writingScore || 0,
-                            recitationScore: recitationScore || 0,
-                            comment: comment
-                        };
-                        await fetch(GOOGLE_SCRIPT_URL, {
-                            method: "POST", mode: "no-cors", 
-                            headers: { "Content-Type": "application/json" },
-                            body: JSON.stringify(payload)
-                        });
-                        alert("Nilai tersimpan di Database!");
-                        setTimeout(() => refreshData(), 1500);
-                        setGradingId(null);
-                    } catch (err) { console.error("Error saving grade", err); alert("Gagal menyimpan."); }
+                        const payload = { type: "grade", assignmentId: gradingId, writingScore: writingScore || 0, recitationScore: recitationScore || 0, comment: comment };
+                        await fetch(GOOGLE_SCRIPT_URL, { method: "POST", mode: "no-cors", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
+                        alert("Nilai tersimpan!"); setTimeout(() => refreshData(), 1500); setGradingId(null);
+                    } catch (err) { alert("Gagal menyimpan."); }
                 }
                 setIsSubmitting(false);
             };
-
-            const startRecFb = async () => { try { const stream = await navigator.mediaDevices.getUserMedia({ audio: true }); mrRefFb.current = new MediaRecorder(stream); chunksRefFb.current = []; mrRefFb.current.ondataavailable = e => chunksRefFb.current.push(e.data); mrRefFb.current.onstop = () => { setFbAudBlob(new Blob(chunksRefFb.current, {type: 'audio/wav'})); }; mrRefFb.current.start(); setIsRecFb(true); } catch(e) { alert("Mic error"); } };
-            const stopRecFb = () => { if(mrRefFb.current) { mrRefFb.current.stop(); setIsRecFb(false); } };
 
             if (gradingId) {
                 const task = assignments.find(a => a.id === gradingId);
@@ -507,25 +326,33 @@
                         <div className="bg-white rounded-2xl p-5 shadow-sm mb-4 border border-slate-100">
                             <h2 className="text-xl font-bold text-slate-800 mb-1">{task.studentName}</h2>
                             <p className="text-sm text-slate-500 mb-4 bg-slate-100 inline-block px-2 py-1 rounded">{task.className} - {task.subject}</p>
-                            <div className="space-y-4">
-                                {task.files.image && (<div><span className="text-xs font-bold text-slate-400 uppercase tracking-wider">Lampiran Foto</span><div className="mt-1 rounded-xl overflow-hidden border border-slate-200"><img src={task.files.image} className="w-full" alt="tugas"/></div></div>)}
-                                {task.files.audio && (
-                                    <div>
-                                        <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">Lampiran Suara</span>
-                                        <audio controls src={task.files.audio} className="w-full mt-1" />
-                                        <a href={task.files.audio} target="_blank" className="text-[10px] text-blue-500 underline mt-1 block text-right">Download Audio</a>
-                                    </div>
+                            
+                            {/* TABS UNTUK MEMISAHKAN GAMBAR DAN AUDIO */}
+                            <div className="flex border-b border-slate-200 mb-4">
+                                <button onClick={() => setGradingTab('image')} className={`flex-1 py-2 text-sm font-bold ${gradingTab === 'image' ? 'text-blue-600 border-b-2 border-blue-600' : 'text-slate-400'}`}>FOTO TUGAS</button>
+                                <button onClick={() => setGradingTab('audio')} className={`flex-1 py-2 text-sm font-bold ${gradingTab === 'audio' ? 'text-blue-600 border-b-2 border-blue-600' : 'text-slate-400'}`}>REKAMAN SUARA</button>
+                            </div>
+
+                            <div className="min-h-[200px] flex items-center justify-center bg-slate-50 rounded-xl border border-slate-200">
+                                {gradingTab === 'image' ? (
+                                    task.files.image ? <img src={task.files.image} className="w-full h-auto rounded-lg" alt="tugas"/> : <p className="text-slate-400 text-xs italic">Tidak ada foto dilampirkan.</p>
+                                ) : (
+                                    task.files.audio ? (
+                                        <div className="text-center w-full p-4">
+                                            <audio controls src={task.files.audio} className="w-full mb-2" />
+                                            <a href={task.files.audio} target="_blank" className="text-xs text-blue-500 underline block">Buka di Tab Baru</a>
+                                        </div>
+                                    ) : <p className="text-slate-400 text-xs italic">Tidak ada rekaman suara.</p>
                                 )}
                             </div>
                         </div>
                         <div className="bg-orange-50 border border-orange-100 rounded-2xl p-5 shadow-sm space-y-5">
-                            <div className="flex items-center gap-2 border-b border-orange-200 pb-2"><i data-lucide="award" width="20" className="text-orange-600"></i><h3 className="font-bold text-orange-800">Form Penilaian Rinci</h3></div>
                             <div className="grid grid-cols-2 gap-4">
-                                <div><label className="text-[10px] font-bold text-orange-700 uppercase mb-1 block">Tugas Menulis</label><input type="number" value={writingScore} onChange={e=>setWritingScore(e.target.value)} className="w-full p-3 rounded-xl border-2 border-orange-200 text-2xl font-bold text-center outline-none focus:border-blue-500 text-blue-600 bg-white" placeholder="0" /></div>
-                                <div><label className="text-[10px] font-bold text-orange-700 uppercase mb-1 block">Tugas Hafalan</label><input type="number" value={recitationScore} onChange={e=>setRecitationScore(e.target.value)} className="w-full p-3 rounded-xl border-2 border-orange-200 text-2xl font-bold text-center outline-none focus:border-green-500 text-green-600 bg-white" placeholder="0" /></div>
+                                <div><label className="text-[10px] font-bold text-orange-700 uppercase mb-1 block">Tugas Menulis</label><input type="number" value={writingScore} onChange={e=>setWritingScore(e.target.value)} className="w-full p-3 rounded-xl border-2 border-orange-200 text-2xl font-bold text-center outline-none bg-white" placeholder="0" /></div>
+                                <div><label className="text-[10px] font-bold text-orange-700 uppercase mb-1 block">Tugas Hafalan</label><input type="number" value={recitationScore} onChange={e=>setRecitationScore(e.target.value)} className="w-full p-3 rounded-xl border-2 border-orange-200 text-2xl font-bold text-center outline-none bg-white" placeholder="0" /></div>
                             </div>
-                            <div><label className="text-xs font-bold text-orange-700 uppercase mb-1 block">Komentar Teks</label><textarea rows="3" value={comment} onChange={e=>setComment(e.target.value)} className="w-full p-3 rounded-xl border border-orange-200 text-sm outline-none focus:ring-2 focus:ring-orange-300 bg-white" placeholder="Tulis masukan..."></textarea></div>
-                            <button onClick={submitGrade} disabled={isSubmitting} className="w-full bg-orange-600 text-white font-bold py-4 rounded-xl shadow-lg shadow-orange-200 hover:bg-orange-700 transition-colors mt-2 text-lg">SIMPAN NILAI</button>
+                            <div><label className="text-xs font-bold text-orange-700 uppercase mb-1 block">Komentar Teks</label><textarea rows="3" value={comment} onChange={e=>setComment(e.target.value)} className="w-full p-3 rounded-xl border border-orange-200 text-sm outline-none bg-white" placeholder="Tulis masukan..."></textarea></div>
+                            <button onClick={submitGrade} disabled={isSubmitting} className="w-full bg-orange-600 text-white font-bold py-4 rounded-xl shadow-lg hover:bg-orange-700 transition-colors mt-2 text-lg">{isSubmitting ? 'Menyimpan...' : 'SIMPAN NILAI'}</button>
                         </div>
                     </div>
                 );
@@ -534,45 +361,15 @@
             return (
                 <div className="bg-slate-50 min-h-screen pb-20 relative font-sans">
                     <div className="bg-orange-600 p-4 sticky top-0 z-40 shadow-lg flex justify-between items-center text-white"><h1 className="font-bold text-lg flex items-center gap-2"><i data-lucide="graduation-cap" width="24" className="text-orange-200"></i> Ruang Guru</h1><button onClick={onExit} className="text-xs bg-orange-700 border border-orange-500 px-3 py-1.5 rounded-full hover:bg-orange-800 transition-colors font-semibold">Keluar</button></div>
-                    <div className="flex bg-white border-b border-slate-200 p-2 gap-2 overflow-x-auto">
-                        <button onClick={() => setActiveView('inbox')} className={`px-4 py-2 rounded-lg text-sm font-bold whitespace-nowrap ${activeView === 'inbox' ? 'bg-orange-100 text-orange-700' : 'text-slate-500'}`}>Koreksi Tugas</button>
-                        <button onClick={() => setActiveView('students')} className={`px-4 py-2 rounded-lg text-sm font-bold whitespace-nowrap ${activeView === 'students' ? 'bg-orange-100 text-orange-700' : 'text-slate-500'}`}>Data Siswa</button>
-                        <button onClick={() => setActiveView('subjects')} className={`px-4 py-2 rounded-lg text-sm font-bold whitespace-nowrap ${activeView === 'subjects' ? 'bg-orange-100 text-orange-700' : 'text-slate-500'}`}>Data Mapel</button>
-                    </div>
+                    <div className="flex bg-white border-b border-slate-200 p-2 gap-2 overflow-x-auto"><button onClick={() => setActiveView('inbox')} className={`px-4 py-2 rounded-lg text-sm font-bold whitespace-nowrap ${activeView === 'inbox' ? 'bg-orange-100 text-orange-700' : 'text-slate-500'}`}>Koreksi Tugas</button><button onClick={() => setActiveView('students')} className={`px-4 py-2 rounded-lg text-sm font-bold whitespace-nowrap ${activeView === 'students' ? 'bg-orange-100 text-orange-700' : 'text-slate-500'}`}>Data Siswa</button></div>
                     <div className="p-4 space-y-4">
                         {activeView === 'inbox' && (
                             <>
-                                <div className="flex items-center gap-2 bg-white p-3 rounded-xl border border-slate-100 shadow-sm">
-                                    <i data-lucide="filter" width="16" className="text-slate-400"></i>
-                                    <select value={filterClass} onChange={(e) => setFilterClass(e.target.value)} className="bg-transparent text-sm font-semibold text-slate-600 outline-none w-full"><option value="all">Semua Kelas</option>{classList.length > 0 ? (classList.map(c => <option key={c} value={c}>Kelas {c}</option>)) : (<option value="all" disabled>Belum ada data kelas</option>)}</select>
-                                    <button onClick={refreshData} className="text-orange-500"><i data-lucide="refresh-cw" width="16"></i></button>
-                                </div>
-                                <div className="flex gap-2 mb-2 overflow-x-auto pb-2 scrollbar-hide">
-                                    <div className="bg-white px-5 py-2.5 rounded-full border border-orange-200 text-orange-700 font-bold text-sm whitespace-nowrap shadow-sm">Perlu Dinilai <span className="ml-1 bg-orange-100 px-2 py-0.5 rounded-full text-xs">{filteredAssignments.filter(a => a.status === 'Menunggu').length}</span></div>
-                                    <div className="bg-transparent px-5 py-2.5 rounded-full border border-slate-200 text-slate-500 font-medium text-sm whitespace-nowrap hover:bg-white transition-colors">Selesai <span className="ml-1 bg-slate-200 px-2 py-0.5 rounded-full text-xs">{filteredAssignments.filter(a => a.status === 'Dinilai').length}</span></div>
-                                </div>
+                                <div className="flex items-center gap-2 bg-white p-3 rounded-xl border border-slate-100 shadow-sm"><i data-lucide="filter" width="16" className="text-slate-400"></i><select value={filterClass} onChange={(e) => setFilterClass(e.target.value)} className="bg-transparent text-sm font-semibold text-slate-600 outline-none w-full"><option value="all">Semua Kelas</option>{classList.length > 0 ? (classList.map(c => <option key={c} value={c}>Kelas {c}</option>)) : (<option value="all" disabled>Belum ada data kelas</option>)}</select><button onClick={refreshData} className="text-orange-500"><i data-lucide="refresh-cw" width="16"></i></button></div>
                                 {filteredAssignments.length === 0 ? (<div className="text-center py-10"><p className="text-slate-400">Tidak ada tugas.</p></div>) : (filteredAssignments.map(task => (<div key={task.id} className="bg-white p-5 rounded-2xl shadow-sm border border-slate-100 flex justify-between items-center transition-transform active:scale-[0.99]"><div><h3 className="font-bold text-slate-800 text-lg">{task.studentName}</h3><p className="text-xs text-slate-500 font-medium">{task.subject} • {task.className}</p><span className={`text-[10px] px-2 py-0.5 rounded mt-2 inline-block font-bold uppercase tracking-wide ${task.status === 'Menunggu' ? 'bg-red-50 text-red-600 border border-red-100' : 'bg-green-50 text-green-600 border border-green-100'}`}>{task.status}</span></div><button onClick={() => openGrading(task.id)} className={`px-5 py-2.5 rounded-xl text-sm font-bold shadow-sm transition-colors ${task.status === 'Menunggu' ? 'bg-orange-600 text-white hover:bg-orange-700' : 'bg-slate-100 text-slate-500 hover:bg-slate-200'}`}>{task.status === 'Menunggu' ? 'NILAI' : 'EDIT'}</button></div>)))}
                             </>
                         )}
-                        {/* Halaman Siswa & Mapel sekarang hanya Read-Only dengan instruksi */}
-                        {activeView === 'students' && (
-                            <div className="space-y-6">
-                                <div className="bg-blue-50 p-4 rounded-xl border border-blue-200 text-blue-800 text-sm">
-                                    <p className="font-bold mb-2 flex items-center gap-2"><i data-lucide="file-spreadsheet" width="18"></i> Kelola di Google Sheet</p>
-                                    <p>Untuk menambah/menghapus siswa, silakan edit langsung file <b>DATABASE_JAWARA</b> di Google Drive Anda (Sheet: DATA_SISWA).</p>
-                                </div>
-                                <div className="bg-white rounded-xl border border-slate-200 overflow-hidden"><div className="bg-slate-100 p-3 font-bold text-slate-600 text-sm border-b">Daftar Siswa ({students.length})</div><div className="max-h-96 overflow-y-auto">{students.length === 0 ? (<p className="p-4 text-center text-slate-400 text-sm">Belum ada data siswa.</p>) : (students.map(s => (<div key={s.id} className="p-3 border-b flex justify-between items-center hover:bg-slate-50"><div><p className="font-bold text-slate-800 text-sm">{s.name}</p><p className="text-xs text-slate-500">Kelas {s.className}</p></div></div>)))}</div></div>
-                            </div>
-                        )}
-                        {activeView === 'subjects' && (
-                            <div className="space-y-6">
-                                <div className="bg-blue-50 p-4 rounded-xl border border-blue-200 text-blue-800 text-sm">
-                                    <p className="font-bold mb-2 flex items-center gap-2"><i data-lucide="file-spreadsheet" width="18"></i> Kelola di Google Sheet</p>
-                                    <p>Untuk menambah/menghapus Mapel, silakan edit langsung file <b>DATABASE_JAWARA</b> di Google Drive Anda (Sheet: DATA_MAPEL).</p>
-                                </div>
-                                <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">{subjects.length === 0 ? (<p className="p-4 text-center text-slate-400 text-sm">Belum ada mata pelajaran.</p>) : (subjects.map(s => (<div key={s} className="p-3 border-b flex justify-between items-center hover:bg-slate-50"><span className="font-medium text-slate-700 text-sm">{s}</span></div>)))}</div>
-                            </div>
-                        )}
+                        {activeView === 'students' && (<div className="bg-blue-50 p-4 rounded-xl border border-blue-200 text-blue-800 text-sm"><p className="font-bold mb-2 flex items-center gap-2"><i data-lucide="file-spreadsheet" width="18"></i> Kelola di Google Sheet</p><p>Gunakan file <b>DATABASE_JAWARA</b> di Google Drive Anda (Sheet: DATA_SISWA / DATA_MAPEL) untuk menambah data.</p></div>)}
                     </div>
                 </div>
             );
@@ -583,14 +380,12 @@
             const [currentPage, setCurrentPage] = useState('cover'); 
             const [userRole, setUserRole] = useState(null); 
             const [isLoadingData, setIsLoadingData] = useState(false);
-            
             const [assignments, setAssignments] = useState([]);
             const [students, setStudents] = useState([]);
             const [subjects, setSubjects] = useState([]);
 
             useEffect(() => { if (window.lucide) { window.lucide.createIcons(); } });
 
-            // --- FETCH DATA DARI GOOGLE SHEET SAAT LOAD ---
             const fetchData = async () => {
                 if (!GOOGLE_SCRIPT_URL) return;
                 setIsLoadingData(true);
@@ -602,11 +397,7 @@
                         setSubjects(data.subjects || []);
                         setAssignments(data.assignments || []);
                     }
-                } catch (error) {
-                    console.error("Gagal mengambil data:", error);
-                } finally {
-                    setIsLoadingData(false);
-                }
+                } catch (error) { console.error("Gagal mengambil data:", error); } finally { setIsLoadingData(false); }
             };
 
             useEffect(() => { fetchData(); }, []);
@@ -615,17 +406,13 @@
                 switch(currentPage) {
                     case 'cover': return <CoverPage onStart={() => setCurrentPage('roleSelection')} isLoadingData={isLoadingData} />;
                     case 'roleSelection': return <RoleSelection onBack={() => setCurrentPage('cover')} onSelectStudent={() => { setUserRole('student'); setCurrentPage('studentApp'); }} onSelectTeacher={() => { setUserRole('teacher'); setCurrentPage('teacherApp'); }} />;
-                    case 'studentApp': return <StudentApp onExit={() => setCurrentPage('cover')} assignments={assignments} setAssignments={setAssignments} refreshData={fetchData} students={students} subjects={subjects} />;
-                    case 'teacherApp': return <TeacherApp onExit={() => setCurrentPage('cover')} assignments={assignments} setAssignments={setAssignments} refreshData={fetchData} students={students} subjects={subjects} />;
+                    case 'studentApp': return <StudentApp onExit={() => setCurrentPage('cover')} assignments={assignments} refreshData={fetchData} students={students} subjects={subjects} />;
+                    case 'teacherApp': return <TeacherApp onExit={() => setCurrentPage('cover')} assignments={assignments} refreshData={fetchData} students={students} subjects={subjects} />;
                     default: return <CoverPage />;
                 }
             };
 
-            return (
-                <div className="w-full max-w-md mx-auto min-h-screen bg-slate-50 shadow-2xl overflow-hidden font-sans relative border-x border-slate-200">
-                    {renderPage()}
-                </div>
-            );
+            return (<div className="w-full max-w-md mx-auto min-h-screen bg-slate-50 shadow-2xl overflow-hidden font-sans relative border-x border-slate-200">{renderPage()}</div>);
         }
 
         const root = ReactDOM.createRoot(document.getElementById('root'));
@@ -633,4 +420,3 @@
     </script>
 </body>
 </html>
-
