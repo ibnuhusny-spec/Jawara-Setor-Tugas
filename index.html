@@ -28,6 +28,7 @@
         .scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
         .fade-in { animation: fadeIn 0.5s ease-in-out; }
         @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+        audio::-webkit-media-controls-enclosure { background-color: #f1f5f9; border-radius: 8px; }
     </style>
 </head>
 <body>
@@ -99,7 +100,7 @@
                         </button>
                     )}
                 </div>
-                <p className="text-[10px] text-green-200/60 uppercase tracking-widest pb-6">Versi HTML 10.0 (Audio & Dual Upload Fix)</p>
+                <p className="text-[10px] text-green-200/60 uppercase tracking-widest pb-6">Versi HTML 11.0 (Audio Playback Fix)</p>
             </div>
         );
 
@@ -149,10 +150,9 @@
             const [audUrl, setAudUrl] = useState(null);
             const [isRec, setIsRec] = useState(false);
             
-            // Audio Recording Ref
             const mrRef = useRef(null);
             const chunksRef = useRef([]);
-            const [audioExt, setAudioExt] = useState('.webm'); // Default extension
+            const [audioExt, setAudioExt] = useState('.webm'); 
 
             const filteredStudents = useMemo(() => (!formClass ? students : students.filter(s => s.className === formClass)), [formClass, students]);
             const classList = useMemo(() => [...new Set(students.map(s => s.className))].sort(), [students]);
@@ -167,18 +167,29 @@
                 return { totalWriting, totalRecitation, count };
             }, [personalAssignments]);
 
+            const blobToBase64 = (blob) => {
+                return new Promise((resolve, reject) => {
+                    const reader = new FileReader();
+                    reader.onloadend = () => resolve(reader.result);
+                    reader.onerror = reject;
+                    reader.readAsDataURL(blob);
+                });
+            };
+
             const handleStudentSubmit = async () => {
                 if(!formName || !formClass) { alert("Pilih Kelas dan Nama dulu."); return; }
                 if(!imgFile && !audBlob) { alert("Lampirkan minimal satu tugas (Foto atau Suara)."); return; }
                 if (!formSubject) { alert("Pilih mata pelajaran."); return; }
 
                 setIsUploading(true);
+                
                 if (GOOGLE_SCRIPT_URL) {
                     try {
                         let compressedImage = null;
                         if (imgFile) compressedImage = await compressImage(imgFile);
                         
                         let audioBase64 = null;
+                        // Pakai ekstensi dari state audioExt
                         if (audBlob) {
                             audioBase64 = await blobToBase64(audBlob);
                         }
@@ -188,12 +199,12 @@
                             studentName: formName, className: formClass, subject: formSubject,
                             image: compressedImage, 
                             audio: audioBase64, 
-                            audioExtension: audioExt // Kirim ekstensi file (.webm atau .mp4)
+                            audioExtension: audioExt 
                         };
                         
                         await fetch(GOOGLE_SCRIPT_URL, { method: "POST", mode: "no-cors", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
                         alert("Tugas Terkirim ke Cloud!");
-                        setTimeout(() => refreshData(), 2000); 
+                        setTimeout(() => refreshData(), 3000); // Delay sedikit lebih lama agar Drive memproses
                     } catch (err) { console.error(err); alert("Gagal koneksi."); }
                 } else { alert("Script URL belum disetting."); }
 
@@ -204,20 +215,19 @@
                 try {
                     const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
                     
-                    // CEK DUKUNGAN BROWSER (Safari butuh mp4/aac, Chrome butuh webm)
+                    // CEK DUKUNGAN BROWSER
                     let mimeType = 'audio/webm';
                     let ext = '.webm';
                     
                     if (MediaRecorder.isTypeSupported('audio/mp4')) {
                         mimeType = 'audio/mp4';
-                        ext = '.mp4';
+                        ext = '.mp4'; // iPhone/Safari
                     } else if (MediaRecorder.isTypeSupported('audio/webm;codecs=opus')) {
                         mimeType = 'audio/webm;codecs=opus';
-                        ext = '.webm';
+                        ext = '.webm'; // Android/Chrome
                     }
 
-                    setAudioExt(ext);
-                    console.log("Recording format:", mimeType);
+                    setAudioExt(ext); 
 
                     mrRef.current = new MediaRecorder(stream, { mimeType: mimeType, audioBitsPerSecond: 32000 });
                     chunksRef.current = [];
@@ -326,7 +336,7 @@
                 const task = assignments.find(a => a.id === id);
                 setGradingId(id);
                 // Auto pilih tab yang ada filenya
-                setGradingTab(task.files.image && task.files.image !== "ERROR_IMG" ? 'image' : 'audio'); 
+                setGradingTab(task.files.image && task.files.image !== "ERROR_IMG" && task.files.image.length > 50 ? 'image' : 'audio'); 
                 if(task.grade) { setWritingScore(task.grade.writingScore); setRecitationScore(task.grade.recitationScore); setComment(task.grade.feedbackText); }
                 else { setWritingScore(''); setRecitationScore(''); setComment(''); }
             };
@@ -370,8 +380,12 @@
                                     (task.files.audio && task.files.audio.length > 20) ? (
                                         <div className="text-center w-full p-4">
                                             <div className="bg-blue-50 p-4 rounded-full w-16 h-16 flex items-center justify-center mx-auto mb-3"><i data-lucide="mic" className="text-blue-500" width="32"></i></div>
-                                            <audio controls src={task.files.audio} className="w-full mb-3" />
-                                            <a href={task.files.audio} target="_blank" className="text-xs bg-blue-600 text-white px-3 py-2 rounded-lg font-bold inline-block hover:bg-blue-700">Download / Buka di Tab Baru</a>
+                                            <audio controls src={task.files.audio} className="w-full mb-3" preload="metadata" />
+                                            {/* TOMBOL ALTERNATIF JIKA PLAYER ERROR */}
+                                            <a href={task.files.audio} target="_blank" className="bg-blue-600 text-white px-4 py-3 rounded-lg text-sm font-bold shadow-lg hover:bg-blue-700 transition-colors inline-flex items-center gap-2">
+                                                <i data-lucide="play" width="16"></i> BUKA AUDIO (ALTERNATIF)
+                                            </a>
+                                            <p className="text-[10px] text-slate-400 mt-2">Klik tombol biru di atas jika player tidak bersuara.</p>
                                         </div>
                                     ) : <div className="text-center p-4"><p className="text-slate-400 text-xs italic">Tidak ada rekaman suara.</p></div>
                                 )}
