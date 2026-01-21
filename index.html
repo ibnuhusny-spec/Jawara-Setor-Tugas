@@ -3,6 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <!-- Meta tag ini penting agar audio Google Drive bisa diputar -->
+    <meta name="referrer" content="no-referrer" />
     <title>JAWARA SETOR TUGAS</title>
     
     <!-- Tailwind CSS -->
@@ -18,9 +20,6 @@
     <!-- Lucide Icons -->
     <script src="https://unpkg.com/lucide@latest"></script>
 
-    <!-- SheetJS -->
-    <script src="https://cdn.sheetjs.com/xlsx-latest/package/dist/xlsx.full.min.js"></script>
-
     <style>
         body, html { height: 100%; margin: 0; overflow: hidden; background-color: #f8fafc; }
         #root { height: 100%; width: 100%; overflow-y: auto; }
@@ -28,7 +27,8 @@
         .scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
         .fade-in { animation: fadeIn 0.5s ease-in-out; }
         @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
-        audio::-webkit-media-controls-enclosure { background-color: #f1f5f9; border-radius: 8px; }
+        /* Style audio player custom */
+        audio { width: 100%; height: 40px; border-radius: 20px; }
     </style>
 </head>
 <body>
@@ -46,7 +46,24 @@
         const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyr2pjvFpDdlCth9yu_6iu6-CtNexJIi-WLdtRkhWW0jd8jtpR69YIxok77KUMu4HY3/exec"; 
         // ======================================================================
 
-        // --- HELPER ---
+        // --- HELPER UNTUK MEMISAHKAN KOMENTAR ---
+        // Format di Database: "Komentar Tulis ||| Komentar Hafalan"
+        const SEPARATOR = "|||";
+
+        const splitComments = (fullText) => {
+            if (!fullText) return { writing: "", recitation: "" };
+            const parts = fullText.split(SEPARATOR);
+            if (parts.length === 2) {
+                return { writing: parts[0], recitation: parts[1] };
+            }
+            return { writing: fullText, recitation: "" }; // Fallback untuk data lama
+        };
+
+        const combineComments = (writing, recitation) => {
+            return `${writing || '-'} ${SEPARATOR} ${recitation || '-'}`;
+        };
+
+        // --- HELPER LAIN ---
         const compressImage = (file) => {
             return new Promise((resolve, reject) => {
                 const reader = new FileReader();
@@ -100,7 +117,7 @@
                         </button>
                     )}
                 </div>
-                <p className="text-[10px] text-green-200/60 uppercase tracking-widest pb-6">Versi HTML 11.0 (Audio Playback Fix)</p>
+                <p className="text-[10px] text-green-200/60 uppercase tracking-widest pb-6">Versi HTML 12.0 (Split Comments)</p>
             </div>
         );
 
@@ -149,10 +166,9 @@
             const [audBlob, setAudBlob] = useState(null);
             const [audUrl, setAudUrl] = useState(null);
             const [isRec, setIsRec] = useState(false);
-            
             const mrRef = useRef(null);
             const chunksRef = useRef([]);
-            const [audioExt, setAudioExt] = useState('.webm'); 
+            const [audioExt, setAudioExt] = useState('.webm');
 
             const filteredStudents = useMemo(() => (!formClass ? students : students.filter(s => s.className === formClass)), [formClass, students]);
             const classList = useMemo(() => [...new Set(students.map(s => s.className))].sort(), [students]);
@@ -167,98 +183,89 @@
                 return { totalWriting, totalRecitation, count };
             }, [personalAssignments]);
 
-            const blobToBase64 = (blob) => {
-                return new Promise((resolve, reject) => {
-                    const reader = new FileReader();
-                    reader.onloadend = () => resolve(reader.result);
-                    reader.onerror = reject;
-                    reader.readAsDataURL(blob);
-                });
-            };
-
             const handleStudentSubmit = async () => {
-                if(!formName || !formClass) { alert("Pilih Kelas dan Nama dulu."); return; }
-                if(!imgFile && !audBlob) { alert("Lampirkan minimal satu tugas (Foto atau Suara)."); return; }
+                if(!formName || !formClass || (!imgFile && !audBlob)) { alert("Data tidak lengkap."); return; }
                 if (!formSubject) { alert("Pilih mata pelajaran."); return; }
 
                 setIsUploading(true);
-                
                 if (GOOGLE_SCRIPT_URL) {
                     try {
                         let compressedImage = null;
                         if (imgFile) compressedImage = await compressImage(imgFile);
                         
                         let audioBase64 = null;
-                        // Pakai ekstensi dari state audioExt
-                        if (audBlob) {
-                            audioBase64 = await blobToBase64(audBlob);
-                        }
+                        if (audBlob) audioBase64 = await blobToBase64(audBlob);
 
                         const payload = {
-                            type: "upload", 
-                            studentName: formName, className: formClass, subject: formSubject,
-                            image: compressedImage, 
-                            audio: audioBase64, 
-                            audioExtension: audioExt 
+                            type: "upload", studentName: formName, className: formClass, subject: formSubject,
+                            image: compressedImage, audio: audioBase64, audioExtension: audioExt 
                         };
-                        
                         await fetch(GOOGLE_SCRIPT_URL, { method: "POST", mode: "no-cors", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
-                        alert("Tugas Terkirim ke Cloud!");
-                        setTimeout(() => refreshData(), 3000); // Delay sedikit lebih lama agar Drive memproses
+                        alert("Tugas Terkirim ke Cloud!"); setTimeout(() => refreshData(), 3000); 
                     } catch (err) { console.error(err); alert("Gagal koneksi."); }
                 } else { alert("Script URL belum disetting."); }
-
                 setIsUploading(false); setFormSubject(''); setImgFile(null); setAudBlob(null); setAudUrl(null); setActiveTab('tasks');
             };
 
             const startRec = async () => {
                 try {
                     const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-                    
-                    // CEK DUKUNGAN BROWSER
-                    let mimeType = 'audio/webm';
-                    let ext = '.webm';
-                    
-                    if (MediaRecorder.isTypeSupported('audio/mp4')) {
-                        mimeType = 'audio/mp4';
-                        ext = '.mp4'; // iPhone/Safari
-                    } else if (MediaRecorder.isTypeSupported('audio/webm;codecs=opus')) {
-                        mimeType = 'audio/webm;codecs=opus';
-                        ext = '.webm'; // Android/Chrome
-                    }
-
-                    setAudioExt(ext); 
+                    let mimeType = MediaRecorder.isTypeSupported('audio/mp4') ? 'audio/mp4' : 'audio/webm';
+                    if (MediaRecorder.isTypeSupported('audio/mp4')) setAudioExt('.mp4'); else setAudioExt('.webm');
 
                     mrRef.current = new MediaRecorder(stream, { mimeType: mimeType, audioBitsPerSecond: 32000 });
                     chunksRef.current = [];
-                    
-                    mrRef.current.ondataavailable = e => {
-                        if (e.data.size > 0) chunksRef.current.push(e.data);
-                    };
-                    
+                    mrRef.current.ondataavailable = e => { if (e.data.size > 0) chunksRef.current.push(e.data); };
                     mrRef.current.onstop = () => {
                         const blob = new Blob(chunksRef.current, { type: mimeType });
-                        setAudBlob(blob); 
-                        setAudUrl(URL.createObjectURL(blob));
+                        setAudBlob(blob); setAudUrl(URL.createObjectURL(blob));
                     };
-                    
-                    mrRef.current.start(); 
-                    setIsRec(true);
+                    mrRef.current.start(); setIsRec(true);
                 } catch(e) { alert("Izin mikrofon ditolak: " + e.message); }
             };
-            
             const stopRec = () => { if(mrRef.current) { mrRef.current.stop(); setIsRec(false); } };
 
             if (selectedAssignment) {
                 const task = selectedAssignment;
+                const comments = splitComments(task.grade?.feedbackText);
                 return (
                     <div className="bg-slate-50 min-h-screen p-4 pb-20 font-sans">
                         <button onClick={() => setSelectedAssignment(null)} className="mb-4 text-slate-500 font-bold flex items-center gap-1"><i data-lucide="x" width="20"></i> Tutup</button>
                         <div className="bg-white rounded-2xl p-5 shadow-lg border border-slate-200">
-                            <h2 className="text-xl font-bold text-slate-800 mb-2">Detail Koreksi</h2>
-                            <p className="text-sm text-slate-500 mb-4">{task.subject}</p>
-                            <div className="space-y-4">
-                                <div className="bg-green-50 p-3 rounded-lg border border-green-100"><span className="text-xs font-bold text-green-700 uppercase block mb-1">Komentar:</span><p className="text-slate-800 italic">"{task.grade?.feedbackText || '-'}"</p></div>
+                            <h2 className="text-xl font-bold text-slate-800 mb-2">Hasil Koreksi</h2>
+                            <p className="text-sm text-slate-500 mb-6">{task.subject} - {new Date(task.timestamp).toLocaleDateString()}</p>
+                            
+                            {/* BAGIAN TUGAS TULIS */}
+                            <div className="mb-6 border-b border-slate-100 pb-6">
+                                <h3 className="text-xs font-bold text-blue-600 uppercase mb-3 flex items-center gap-1"><i data-lucide="image" width="14"></i> Tugas Tulis</h3>
+                                <div className="bg-blue-50 p-4 rounded-xl">
+                                    <div className="flex justify-between items-center mb-2">
+                                        <span className="text-xs text-blue-800 font-bold">NILAI:</span>
+                                        <span className="text-2xl font-extrabold text-blue-700">{task.grade?.writingScore || 0}</span>
+                                    </div>
+                                    <hr className="border-blue-200 mb-2"/>
+                                    <p className="text-sm text-blue-900 italic">"{comments.writing || 'Belum ada komentar'}"</p>
+                                    
+                                    {task.grade?.feedbackImage && (
+                                        <div className="mt-3">
+                                            <span className="text-[10px] font-bold text-blue-400 uppercase block mb-1">Coretan:</span>
+                                            <img src={task.grade.feedbackImage} className="w-full rounded-lg border border-blue-200" />
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+
+                            {/* BAGIAN TUGAS HAFALAN */}
+                            <div>
+                                <h3 className="text-xs font-bold text-orange-600 uppercase mb-3 flex items-center gap-1"><i data-lucide="mic" width="14"></i> Tugas Hafalan</h3>
+                                <div className="bg-orange-50 p-4 rounded-xl">
+                                    <div className="flex justify-between items-center mb-2">
+                                        <span className="text-xs text-orange-800 font-bold">NILAI:</span>
+                                        <span className="text-2xl font-extrabold text-orange-700">{task.grade?.recitationScore || 0}</span>
+                                    </div>
+                                    <hr className="border-orange-200 mb-2"/>
+                                    <p className="text-sm text-orange-900 italic">"{comments.recitation || 'Belum ada komentar'}"</p>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -284,11 +291,9 @@
                                 </div>
                                 <div className="bg-white rounded-3xl p-5 shadow-sm space-y-4 border border-slate-100">
                                     <h3 className="font-bold text-slate-700 flex items-center gap-2"><i data-lucide="upload" width="18" className="text-green-600"></i> Lampiran (Bisa Keduanya)</h3>
-                                    {/* Image Input */}
                                     <div className={`border-2 border-dashed rounded-2xl p-4 flex flex-col items-center justify-center transition-colors ${imgFile ? 'border-green-500 bg-green-50' : 'border-slate-200'}`}>
                                         {imgFile ? (<div className="relative w-full"><img src={URL.createObjectURL(imgFile)} className="h-32 w-full object-cover rounded-xl" alt="preview"/><button onClick={()=>setImgFile(null)} className="absolute top-2 right-2 bg-red-500 text-white p-1 rounded-full"><i data-lucide="x" width="14"></i></button><p className="text-xs text-green-700 text-center mt-1 font-bold">Foto Siap</p></div>) : (<label className="flex flex-col items-center gap-2 cursor-pointer w-full py-2"><i data-lucide="camera" className="text-blue-500" width="24"></i><span className="text-sm font-medium text-slate-600">Ambil Foto</span><input type="file" accept="image/*" className="hidden" onChange={e => e.target.files && setImgFile(e.target.files[0])} /></label>)}
                                     </div>
-                                    {/* Audio Input */}
                                     <div className={`border-2 border-dashed rounded-2xl p-4 flex items-center justify-center ${audUrl ? 'border-green-500 bg-green-50' : 'border-slate-200'}`}>
                                         {audUrl ? (<div className="flex items-center gap-2 w-full justify-between px-2"><audio src={audUrl} controls className="h-8 w-40" /><button onClick={()=>{setAudUrl(null); setAudBlob(null);}} className="text-red-500"><i data-lucide="x" width="16"></i></button></div>) : (<button onClick={isRec ? stopRec : startRec} className={`flex items-center gap-3 px-6 py-3 rounded-full text-sm font-bold w-full justify-center ${isRec ? 'bg-red-500 text-white animate-pulse' : 'bg-slate-100 text-slate-600'}`}><i data-lucide="mic" width="18"></i> {isRec ? 'STOP REKAM' : 'REKAM SUARA'}</button>)}
                                     </div>
@@ -302,7 +307,7 @@
                                 {(!formName || !formClass) ? (<div className="text-center py-10 opacity-60"><p className="text-slate-500 text-sm">Pilih Kelas & Nama untuk melihat nilai.</p></div>) : (
                                     <>
                                         <div className="bg-gradient-to-r from-blue-600 to-blue-800 rounded-2xl p-5 text-white shadow-lg"><h3 className="text-sm font-bold opacity-80 mb-3 text-center">Total Poin Saya</h3><div className="grid grid-cols-2 gap-4"><div className="bg-white/10 p-3 rounded-xl text-center"><span className="block text-3xl font-extrabold">{personalSummary.totalWriting}</span><span className="text-[10px] opacity-80">Menulis</span></div><div className="bg-white/10 p-3 rounded-xl text-center"><span className="block text-3xl font-extrabold">{personalSummary.totalRecitation}</span><span className="text-[10px] opacity-80">Hafalan</span></div></div></div>
-                                        {personalAssignments.length === 0 ? (<p className="text-center text-slate-400 text-sm mt-4">Belum ada tugas.</p>) : (<div className="space-y-3 mt-4">{personalAssignments.map(tugas => (<div key={tugas.id} className="bg-white rounded-xl p-4 shadow-sm border border-slate-100"><div className="flex justify-between items-start mb-2"><div><h3 className="font-bold text-slate-800">{tugas.subject}</h3><p className="text-[10px] text-slate-400">{new Date(tugas.timestamp).toLocaleDateString()}</p></div><span className="px-2 py-0.5 rounded text-[10px] font-bold bg-slate-100">{tugas.status}</span></div>{tugas.status === 'Dinilai' && (<div className="grid grid-cols-2 gap-2 mt-2"><div className="text-xs bg-blue-50 p-2 rounded text-blue-700">Tulis: <b>{tugas.grade.writingScore}</b></div><div className="text-xs bg-orange-50 p-2 rounded text-orange-700">Hafal: <b>{tugas.grade.recitationScore}</b></div></div>)}</div>))}</div>)}
+                                        {personalAssignments.length === 0 ? (<p className="text-center text-slate-400 text-sm mt-4">Belum ada tugas.</p>) : (<div className="space-y-3 mt-4">{personalAssignments.map(tugas => (<div key={tugas.id} className="bg-white rounded-xl p-4 shadow-sm border border-slate-100"><div className="flex justify-between items-start mb-2"><div><h3 className="font-bold text-slate-800">{tugas.subject}</h3><p className="text-[10px] text-slate-400">{new Date(tugas.timestamp).toLocaleDateString()}</p></div><span className="px-2 py-0.5 rounded text-[10px] font-bold bg-slate-100">{tugas.status}</span></div>{tugas.status === 'Dinilai' && (<div className="grid grid-cols-2 gap-2 mt-2"><div className="text-xs bg-blue-50 p-2 rounded text-blue-700">Tulis: <b>{tugas.grade.writingScore}</b></div><div className="text-xs bg-orange-50 p-2 rounded text-orange-700">Hafal: <b>{tugas.grade.recitationScore}</b></div></div>)}<button onClick={() => setSelectedAssignment(tugas)} className="w-full mt-3 py-2 bg-green-50 text-green-700 text-xs font-bold rounded-lg hover:bg-green-100 flex items-center justify-center gap-1 border border-green-100"><i data-lucide="eye" width="14"></i> LIHAT HASIL KOREKSI</button></div>))}</div>)}
                                     </>
                                 )}
                             </div>
@@ -322,11 +327,11 @@
             const [gradingId, setGradingId] = useState(null);
             const [isSubmitting, setIsSubmitting] = useState(false);
             
-            // Grading States
             const [gradingTab, setGradingTab] = useState('image'); 
             const [writingScore, setWritingScore] = useState('');
             const [recitationScore, setRecitationScore] = useState('');
-            const [comment, setComment] = useState('');
+            const [commentWriting, setCommentWriting] = useState('');
+            const [commentRecitation, setCommentRecitation] = useState('');
             const [filterClass, setFilterClass] = useState('all');
 
             const classList = useMemo(() => [...new Set(students.map(s => s.className))].sort(), [students]);
@@ -335,17 +340,27 @@
             const openGrading = (id) => {
                 const task = assignments.find(a => a.id === id);
                 setGradingId(id);
-                // Auto pilih tab yang ada filenya
                 setGradingTab(task.files.image && task.files.image !== "ERROR_IMG" && task.files.image.length > 50 ? 'image' : 'audio'); 
-                if(task.grade) { setWritingScore(task.grade.writingScore); setRecitationScore(task.grade.recitationScore); setComment(task.grade.feedbackText); }
-                else { setWritingScore(''); setRecitationScore(''); setComment(''); }
+                
+                if(task.grade) { 
+                    setWritingScore(task.grade.writingScore); 
+                    setRecitationScore(task.grade.recitationScore); 
+                    // Pisahkan komentar
+                    const comms = splitComments(task.grade.feedbackText);
+                    setCommentWriting(comms.writing);
+                    setCommentRecitation(comms.recitation);
+                } else { 
+                    setWritingScore(''); setRecitationScore(''); 
+                    setCommentWriting(''); setCommentRecitation(''); 
+                }
             };
 
             const submitGrade = async () => {
                 setIsSubmitting(true);
                 if (GOOGLE_SCRIPT_URL) {
                     try {
-                        const payload = { type: "grade", assignmentId: gradingId, writingScore: writingScore || 0, recitationScore: recitationScore || 0, comment: comment };
+                        const fullComment = combineComments(commentWriting, commentRecitation);
+                        const payload = { type: "grade", assignmentId: gradingId, writingScore: writingScore || 0, recitationScore: recitationScore || 0, comment: fullComment };
                         await fetch(GOOGLE_SCRIPT_URL, { method: "POST", mode: "no-cors", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
                         alert("Nilai tersimpan!"); setTimeout(() => refreshData(), 1500); setGradingId(null);
                     } catch (err) { alert("Gagal menyimpan."); }
@@ -365,39 +380,49 @@
                             <h2 className="text-xl font-bold text-slate-800 mb-1">{task.studentName}</h2>
                             <p className="text-sm text-slate-500 mb-4 bg-slate-100 inline-block px-2 py-1 rounded">{task.className} - {task.subject}</p>
                             
-                            {/* TABS PILIHAN FILE */}
+                            {/* TABS UTAMA */}
                             <div className="flex border-b border-slate-200 mb-4">
-                                <button onClick={() => setGradingTab('image')} className={`flex-1 py-2 text-sm font-bold transition-colors ${gradingTab === 'image' ? 'text-blue-600 border-b-2 border-blue-600' : 'text-slate-400 hover:text-slate-600'}`}>FOTO TUGAS</button>
-                                <button onClick={() => setGradingTab('audio')} className={`flex-1 py-2 text-sm font-bold transition-colors ${gradingTab === 'audio' ? 'text-blue-600 border-b-2 border-blue-600' : 'text-slate-400 hover:text-slate-600'}`}>REKAMAN SUARA</button>
+                                <button onClick={() => setGradingTab('image')} className={`flex-1 py-2 text-sm font-bold transition-colors ${gradingTab === 'image' ? 'text-blue-600 border-b-2 border-blue-600' : 'text-slate-400 hover:text-slate-600'}`}>TUGAS TULIS</button>
+                                <button onClick={() => setGradingTab('audio')} className={`flex-1 py-2 text-sm font-bold transition-colors ${gradingTab === 'audio' ? 'text-orange-600 border-b-2 border-orange-600' : 'text-slate-400 hover:text-slate-600'}`}>TUGAS HAFALAN</button>
                             </div>
 
-                            <div className="min-h-[200px] flex items-center justify-center bg-slate-50 rounded-xl border border-slate-200">
+                            <div className="min-h-[200px] bg-slate-50 rounded-xl border border-slate-200 overflow-hidden">
                                 {gradingTab === 'image' ? (
-                                    (task.files.image && task.files.image.length > 20) ? (
-                                        <img src={task.files.image} className="w-full h-auto rounded-lg" alt="tugas"/>
-                                    ) : <div className="text-center p-4"><p className="text-slate-400 text-xs italic">Tidak ada foto dilampirkan.</p></div>
-                                ) : (
-                                    (task.files.audio && task.files.audio.length > 20) ? (
-                                        <div className="text-center w-full p-4">
-                                            <div className="bg-blue-50 p-4 rounded-full w-16 h-16 flex items-center justify-center mx-auto mb-3"><i data-lucide="mic" className="text-blue-500" width="32"></i></div>
-                                            <audio controls src={task.files.audio} className="w-full mb-3" preload="metadata" />
-                                            {/* TOMBOL ALTERNATIF JIKA PLAYER ERROR */}
-                                            <a href={task.files.audio} target="_blank" className="bg-blue-600 text-white px-4 py-3 rounded-lg text-sm font-bold shadow-lg hover:bg-blue-700 transition-colors inline-flex items-center gap-2">
-                                                <i data-lucide="play" width="16"></i> BUKA AUDIO (ALTERNATIF)
-                                            </a>
-                                            <p className="text-[10px] text-slate-400 mt-2">Klik tombol biru di atas jika player tidak bersuara.</p>
+                                    <div className="p-4">
+                                        {/* AREA FOTO */}
+                                        {(task.files.image && task.files.image.length > 20) ? (
+                                            <img src={task.files.image} className="w-full h-auto rounded-lg mb-4" alt="tugas"/>
+                                        ) : <p className="text-slate-400 text-xs italic text-center mb-4">Tidak ada foto.</p>}
+                                        
+                                        {/* FORM NILAI TULIS */}
+                                        <div className="bg-white p-3 rounded-xl border border-slate-200 shadow-sm">
+                                            <div className="mb-2"><label className="text-[10px] font-bold text-blue-600 uppercase">Nilai Tulis</label><input type="number" value={writingScore} onChange={e=>setWritingScore(e.target.value)} className="w-full p-2 border rounded-lg text-lg font-bold text-blue-700" placeholder="0" /></div>
+                                            <div><label className="text-[10px] font-bold text-slate-500 uppercase">Komentar Tulis</label><textarea rows="2" value={commentWriting} onChange={e=>setCommentWriting(e.target.value)} className="w-full p-2 border rounded-lg text-sm" placeholder="Masukan untuk tulisan..."></textarea></div>
                                         </div>
-                                    ) : <div className="text-center p-4"><p className="text-slate-400 text-xs italic">Tidak ada rekaman suara.</p></div>
+                                    </div>
+                                ) : (
+                                    <div className="p-4">
+                                        {/* AREA AUDIO */}
+                                        {(task.files.audio && task.files.audio.length > 20) ? (
+                                            <div className="text-center w-full mb-4">
+                                                <div className="bg-orange-50 p-3 rounded-full w-12 h-12 flex items-center justify-center mx-auto mb-3"><i data-lucide="mic" className="text-orange-500" width="24"></i></div>
+                                                <audio controls src={task.files.audio} className="w-full mb-2" preload="metadata" />
+                                                <a href={task.files.audio} target="_blank" className="bg-orange-600 text-white px-3 py-2 rounded-lg text-xs font-bold inline-flex items-center gap-2 hover:bg-orange-700"><i data-lucide="play" width="14"></i> BUKA AUDIO (ALTERNATIF)</a>
+                                            </div>
+                                        ) : <p className="text-slate-400 text-xs italic text-center mb-4">Tidak ada rekaman.</p>}
+
+                                        {/* FORM NILAI HAFALAN */}
+                                        <div className="bg-white p-3 rounded-xl border border-slate-200 shadow-sm">
+                                            <div className="mb-2"><label className="text-[10px] font-bold text-orange-600 uppercase">Nilai Hafalan</label><input type="number" value={recitationScore} onChange={e=>setRecitationScore(e.target.value)} className="w-full p-2 border rounded-lg text-lg font-bold text-orange-700" placeholder="0" /></div>
+                                            <div><label className="text-[10px] font-bold text-slate-500 uppercase">Komentar Hafalan</label><textarea rows="2" value={commentRecitation} onChange={e=>setCommentRecitation(e.target.value)} className="w-full p-2 border rounded-lg text-sm" placeholder="Masukan untuk hafalan..."></textarea></div>
+                                        </div>
+                                    </div>
                                 )}
                             </div>
                         </div>
-                        <div className="bg-orange-50 border border-orange-100 rounded-2xl p-5 shadow-sm space-y-5">
-                            <div className="grid grid-cols-2 gap-4">
-                                <div><label className="text-[10px] font-bold text-orange-700 uppercase mb-1 block">Tugas Menulis</label><input type="number" value={writingScore} onChange={e=>setWritingScore(e.target.value)} className="w-full p-3 rounded-xl border-2 border-orange-200 text-2xl font-bold text-center outline-none bg-white" placeholder="0" /></div>
-                                <div><label className="text-[10px] font-bold text-orange-700 uppercase mb-1 block">Tugas Hafalan</label><input type="number" value={recitationScore} onChange={e=>setRecitationScore(e.target.value)} className="w-full p-3 rounded-xl border-2 border-orange-200 text-2xl font-bold text-center outline-none bg-white" placeholder="0" /></div>
-                            </div>
-                            <div><label className="text-xs font-bold text-orange-700 uppercase mb-1 block">Komentar Teks</label><textarea rows="3" value={comment} onChange={e=>setComment(e.target.value)} className="w-full p-3 rounded-xl border border-orange-200 text-sm outline-none bg-white" placeholder="Tulis masukan..."></textarea></div>
-                            <button onClick={submitGrade} disabled={isSubmitting} className="w-full bg-orange-600 text-white font-bold py-4 rounded-xl shadow-lg hover:bg-orange-700 transition-colors mt-2 text-lg">{isSubmitting ? 'Menyimpan...' : 'SIMPAN NILAI'}</button>
+                        
+                        <div className="fixed bottom-0 left-0 right-0 p-4 bg-white border-t border-slate-200 max-w-md mx-auto">
+                            <button onClick={submitGrade} disabled={isSubmitting} className="w-full bg-green-600 text-white font-bold py-3 rounded-xl shadow-lg hover:bg-green-700 transition-colors">{isSubmitting ? 'Menyimpan...' : 'SIMPAN SEMUA NILAI'}</button>
                         </div>
                     </div>
                 );
