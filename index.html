@@ -86,8 +86,8 @@
             const [passwordInput, setPasswordInput] = useState('');
 
             const handleTeacherLogin = () => {
-                if (passwordInput === '123456') { onSelectTeacher(); setShowLoginModal(false); setPasswordInput(''); } 
-                else { alert('Password Salah! (Default: QA1234)'); }
+                if (passwordInput === 'QA1234') { onSelectTeacher(); setShowLoginModal(false); setPasswordInput(''); } 
+                else { alert('Password Salah! (Default: )'); }
             };
 
             return (
@@ -585,4 +585,5 @@
     </script>
 </body>
 </html>
+
 
