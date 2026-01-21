@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <meta name="referrer" content="no-referrer" />
-    <title>Aplikasi Setor Tugas</title>
+    <title>JAWARA SETOR TUGAS</title>
     
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
@@ -40,16 +40,12 @@
         const { useState, useRef, useEffect, useMemo } = React;
 
         // ======================================================================
-        // AREA KONFIGURASI (BAGIAN INI YANG DIEDIT OLEH GURU LAIN)
+        // KONFIGURASI 
         // ======================================================================
-        
-        // 1. Nama Sekolah / Kelas (Akan muncul di Judul & Halaman Depan)
         const SCHOOL_NAME = "SDIT QURRATU A'YUN AL-ISLAMI MAROS"; 
         
-        // 2. URL Google Apps Script (Hasil Deploy masing-masing guru)
-        // Contoh format: "https://script.google.com/macros/s/AKfycbx.../exec"
-        const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyr2pjvFpDdlCth9yu_6iu6-CtNexJIi-WLdtRkhWW0jd8jtpR69YIxok77KUMu4HY3/exec"; 
-        
+        // PASTE URL GOOGLE APPS SCRIPT ANDA DI SINI
+        const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbz-u4jE_yWAb8OmEwvSYt5O60Qit5l1tOr0Mk4APhxQridqt8q2hB_zOQ4V2nOV-iaT/exec"; 
         // ======================================================================
 
         // --- HELPER ---
@@ -104,13 +100,7 @@
                     <h1 className="text-3xl font-extrabold mb-2 text-yellow-300 drop-shadow-md uppercase font-sans tracking-wide leading-tight">JAWARA<br/>SETOR TUGAS</h1>
                     <div className="h-1 w-16 bg-yellow-400 rounded-full mb-4"></div>
                     <h2 className="text-sm font-bold text-green-50 mb-12 font-sans tracking-wide uppercase whitespace-nowrap overflow-hidden text-ellipsis w-full px-2">{SCHOOL_NAME}</h2>
-                    
-                    {!GOOGLE_SCRIPT_URL ? (
-                        <div className="bg-red-500/80 p-4 rounded-xl text-xs max-w-xs mx-auto border border-red-300 animate-pulse">
-                            <p className="font-bold mb-1">⚠️ SETUP DIPERLUKAN</p>
-                            <p>URL Google Apps Script belum diisi di kode HTML ini. Hubungi Admin/IT Sekolah.</p>
-                        </div>
-                    ) : isLoadingData ? (
+                    {isLoadingData ? (
                         <div className="flex flex-col items-center gap-2 text-green-100 animate-pulse"><i data-lucide="loader-2" className="animate-spin"></i><span className="text-xs">Menyinkronkan Data...</span></div>
                     ) : (
                         <button onClick={onStart} className="w-full max-w-[260px] bg-white text-green-900 font-bold py-4 rounded-full shadow-lg hover:bg-green-50 active:scale-95 transition-all flex items-center justify-center gap-2 group border-b-4 border-green-200">
@@ -118,7 +108,7 @@
                         </button>
                     )}
                 </div>
-                <p className="text-[10px] text-green-200/60 uppercase tracking-widest pb-6">Versi Template 14.0</p>
+                <p className="text-[10px] text-green-200/60 uppercase tracking-widest pb-6">Versi HTML 13.0 (Persist Session)</p>
             </div>
         );
 
@@ -241,7 +231,7 @@
                                 <div className="bg-blue-50 p-4 rounded-xl">
                                     <div className="flex justify-between items-center mb-2"><span className="text-xs text-blue-800 font-bold">NILAI:</span><span className="text-2xl font-extrabold text-blue-700">{task.grade?.writingScore || 0}</span></div>
                                     <hr className="border-blue-200 mb-2"/><p className="text-sm text-blue-900 italic">"{comments.writing || 'Belum ada komentar'}"</p>
-                                    {task.grade?.feedbackImage && (<div className="mt-3"><span className="text-[10px] font-bold text-blue-400 uppercase block mb-1">Coretan:</span><img src={task.grade.feedbackImage} className="w-full rounded-lg border border-blue-200" /></div>)}
+                                    {task.grade?.feedbackImage && (<div className="mt-3"><span className="text-[10px] font-bold text-blue-400 uppercase block mb-1">Coretan:</span><a href={task.grade.feedbackImage} target="_blank"><img src={task.grade.feedbackImage} className="w-full rounded-lg border border-blue-200" /></a></div>)}
                                 </div>
                             </div>
                             <div>
