@@ -3,6 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <!-- Meta tag ini membantu agar audio Google Drive bisa diputar langsung -->
     <meta name="referrer" content="no-referrer" />
     <title>JAWARA SETOR TUGAS</title>
     
@@ -29,8 +30,10 @@
         .scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
         .fade-in { animation: fadeIn 0.5s ease-in-out; }
         @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
-        audio { width: 100%; height: 40px; border-radius: 20px; }
-        .tab-active { border-bottom: 3px solid; font-weight: 800; }
+        /* Style Audio Player */
+        audio { width: 100%; height: 40px; border-radius: 20px; outline: none; }
+        /* Style Tab Aktif */
+        .tab-active { border-bottom: 3px solid; font-weight: 800; opacity: 1 !important; }
     </style>
 </head>
 <body>
@@ -44,18 +47,25 @@
         // ======================================================================
         const SCHOOL_NAME = "SDIT QURRATU A'YUN AL-ISLAMI MAROS"; 
         
-        // PASTE URL GOOGLE APPS SCRIPT ANDA DI SINI
-        const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbz-u4jE_yWAb8OmEwvSYt5O60Qit5l1tOr0Mk4APhxQridqt8q2hB_zOQ4V2nOV-iaT/exec"; 
+        // !!! PENTING: PASTE URL GOOGLE APPS SCRIPT ANDA DI SINI !!!
+        const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwKBThFjtM5lwlg75LyPdxQxLbuwNAPsYb5yMB_xjNxQcMavS-NRTakI9FD5elSFJvC/exec"; 
         // ======================================================================
 
-        // --- HELPER ---
+        // --- HELPER FUNCTIONS ---
         const SEPARATOR = "|||";
+        // Memisahkan komentar gabungan menjadi object
         const splitComments = (fullText) => {
             if (!fullText) return { writing: "", recitation: "" };
             const parts = fullText.split(SEPARATOR);
-            return parts.length === 2 ? { writing: parts[0], recitation: parts[1] } : { writing: fullText, recitation: "" };
+            if (parts.length === 2) {
+                return { writing: parts[0], recitation: parts[1] };
+            }
+            return { writing: fullText, recitation: "" };
         };
-        const combineComments = (writing, recitation) => `${writing || '-'} ${SEPARATOR} ${recitation || '-'}`;
+        // Menggabungkan komentar untuk disimpan ke database
+        const combineComments = (writing, recitation) => {
+            return `${writing || '-'} ${SEPARATOR} ${recitation || '-'}`;
+        };
 
         const compressImage = (file) => {
             return new Promise((resolve, reject) => {
@@ -108,7 +118,7 @@
                         </button>
                     )}
                 </div>
-                <p className="text-[10px] text-green-200/60 uppercase tracking-widest pb-6">Versi HTML 13.0 (Persist Session)</p>
+                <p className="text-[10px] text-green-200/60 uppercase tracking-widest pb-6">Versi HTML 13.0 (Final Tabs)</p>
             </div>
         );
 
@@ -161,7 +171,6 @@
             const chunksRef = useRef([]);
             const [audioExt, setAudioExt] = useState('.webm');
 
-            // Simpan identitas siswa agar tidak hilang saat refresh
             useEffect(() => { localStorage.setItem('jawara_student_name', formName); }, [formName]);
             useEffect(() => { localStorage.setItem('jawara_student_class', formClass); }, [formClass]);
 
@@ -231,7 +240,7 @@
                                 <div className="bg-blue-50 p-4 rounded-xl">
                                     <div className="flex justify-between items-center mb-2"><span className="text-xs text-blue-800 font-bold">NILAI:</span><span className="text-2xl font-extrabold text-blue-700">{task.grade?.writingScore || 0}</span></div>
                                     <hr className="border-blue-200 mb-2"/><p className="text-sm text-blue-900 italic">"{comments.writing || 'Belum ada komentar'}"</p>
-                                    {task.grade?.feedbackImage && (<div className="mt-3"><span className="text-[10px] font-bold text-blue-400 uppercase block mb-1">Coretan:</span><a href={task.grade.feedbackImage} target="_blank"><img src={task.grade.feedbackImage} className="w-full rounded-lg border border-blue-200" /></a></div>)}
+                                    {task.grade?.feedbackImage && (<div className="mt-3"><span className="text-[10px] font-bold text-blue-400 uppercase block mb-1">Coretan:</span><a href={task.grade.feedbackImage} target="_blank"><img src={task.grade.feedbackImage} className="w-full rounded-lg border border-blue-200 mt-1" /></a></div>)}
                                 </div>
                             </div>
                             <div>
@@ -239,6 +248,7 @@
                                 <div className="bg-orange-50 p-4 rounded-xl">
                                     <div className="flex justify-between items-center mb-2"><span className="text-xs text-orange-800 font-bold">NILAI:</span><span className="text-2xl font-extrabold text-orange-700">{task.grade?.recitationScore || 0}</span></div>
                                     <hr className="border-orange-200 mb-2"/><p className="text-sm text-orange-900 italic">"{comments.recitation || 'Belum ada komentar'}"</p>
+                                    {task.grade?.feedbackAudio && (<div className="mt-3"><span className="text-[10px] font-bold text-orange-400 uppercase block mb-1">Balasan Suara:</span><audio src={task.grade.feedbackAudio} controls className="w-full" /></div>)}
                                 </div>
                             </div>
                         </div>
@@ -312,6 +322,12 @@
             const [recitationScore, setRecitationScore] = useState('');
             const [commentWriting, setCommentWriting] = useState('');
             const [commentRecitation, setCommentRecitation] = useState('');
+            const [fbImg, setFbImg] = useState(null);
+            const [fbAudBlob, setFbAudBlob] = useState(null);
+            const [fbAudUrl, setFbAudUrl] = useState(null);
+            const [isRecFb, setIsRecFb] = useState(false);
+            const mrRefFb = useRef(null);
+            const chunksRefFb = useRef([]);
             const [filterClass, setFilterClass] = useState('all');
 
             const classList = useMemo(() => [...new Set(students.map(s => s.className))].sort(), [students]);
@@ -320,8 +336,8 @@
             const openGrading = (id) => {
                 const task = assignments.find(a => a.id === id);
                 setGradingId(id);
-                // Pilih tab yang ada filenya
-                setGradingTab(task.files.image && task.files.image !== "ERROR_IMG" && task.files.image.length > 50 ? 'image' : 'audio'); 
+                setGradingTab(task.files.image && task.files.image !== "ERROR" && task.files.image.length > 50 ? 'image' : 'audio'); 
+                setFbImg(null); setFbAudBlob(null); setFbAudUrl(null);
                 
                 if(task.grade) { 
                     setWritingScore(task.grade.writingScore); 
@@ -335,14 +351,36 @@
                 }
             };
 
+            const startRecFb = async () => {
+                try {
+                    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                    mrRefFb.current = new MediaRecorder(stream, { mimeType: 'audio/webm' });
+                    chunksRefFb.current = [];
+                    mrRefFb.current.ondataavailable = e => { if (e.data.size > 0) chunksRefFb.current.push(e.data); };
+                    mrRefFb.current.onstop = () => {
+                        const blob = new Blob(chunksRefFb.current, { type: 'audio/webm' });
+                        setFbAudBlob(blob); setFbAudUrl(URL.createObjectURL(blob));
+                    };
+                    mrRefFb.current.start(); setIsRecFb(true);
+                } catch(e) { alert("Mic error: " + e.message); }
+            };
+            const stopRecFb = () => { if(mrRefFb.current) { mrRefFb.current.stop(); setIsRecFb(false); } };
+
             const submitGrade = async () => {
                 setIsSubmitting(true);
                 if (GOOGLE_SCRIPT_URL) {
                     try {
+                        let compressedImg = null; if(fbImg) compressedImg = await compressImage(fbImg);
+                        let audioBase64 = null; if(fbAudBlob) audioBase64 = await blobToBase64(fbAudBlob);
+
                         const fullComment = combineComments(commentWriting, commentRecitation);
-                        const payload = { type: "grade", assignmentId: gradingId, writingScore: writingScore || 0, recitationScore: recitationScore || 0, comment: fullComment };
+                        const payload = { 
+                            type: "grade", assignmentId: gradingId, 
+                            writingScore: writingScore || 0, recitationScore: recitationScore || 0, comment: fullComment,
+                            feedbackImage: compressedImg, feedbackAudio: audioBase64 
+                        };
                         await fetch(GOOGLE_SCRIPT_URL, { method: "POST", mode: "no-cors", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
-                        alert("Nilai tersimpan!"); setTimeout(() => refreshData(), 1500); setGradingId(null);
+                        alert("Nilai & Koreksi tersimpan!"); setTimeout(() => refreshData(), 2000); setGradingId(null);
                     } catch (err) { alert("Gagal menyimpan."); }
                 }
                 setIsSubmitting(false);
@@ -374,9 +412,19 @@
                                                 <a href={task.files.image} target="_blank"><img src={task.files.image} className="w-full h-auto rounded-lg shadow-sm" alt="Klik untuk memperbesar"/></a>
                                             ) : <p className="text-slate-400 text-xs italic py-10">Tidak ada foto dilampirkan.</p>}
                                         </div>
-                                        <div className="bg-blue-50 p-4 rounded-xl border border-blue-100">
+                                        <div className="bg-blue-50 p-4 rounded-xl border border-blue-100 mb-4">
                                             <div className="mb-3"><label className="text-xs font-bold text-blue-700 uppercase block mb-1">Nilai Tulis (0-100)</label><input type="number" value={writingScore} onChange={e=>setWritingScore(e.target.value)} className="w-full p-3 rounded-lg border-2 border-blue-200 text-xl font-bold text-blue-800 focus:outline-none focus:border-blue-500" placeholder="0" /></div>
-                                            <div><label className="text-xs font-bold text-slate-500 uppercase block mb-1">Komentar Guru</label><textarea rows="3" value={commentWriting} onChange={e=>setCommentWriting(e.target.value)} className="w-full p-3 rounded-lg border border-slate-200 text-sm focus:outline-none focus:border-blue-400" placeholder="Berikan masukan untuk tulisan siswa..."></textarea></div>
+                                            <div className="mb-3"><label className="text-xs font-bold text-slate-500 uppercase block mb-1">Komentar Guru</label><textarea rows="3" value={commentWriting} onChange={e=>setCommentWriting(e.target.value)} className="w-full p-3 rounded-lg border border-slate-200 text-sm focus:outline-none focus:border-blue-400" placeholder="Berikan masukan untuk tulisan siswa..."></textarea></div>
+                                            
+                                            {/* UPLOAD CORETAN */}
+                                            <div className={`border-2 border-dashed rounded-xl p-3 text-center cursor-pointer transition-colors ${fbImg ? 'border-blue-500 bg-blue-100' : 'border-blue-200'}`}>
+                                                <label className="cursor-pointer block">
+                                                    <i data-lucide="image-plus" className="mx-auto mb-1 text-blue-500"></i>
+                                                    <span className="text-xs font-bold text-blue-600">{fbImg ? "Ganti Coretan" : "Upload Coretan Balasan"}</span>
+                                                    <input type="file" accept="image/*" className="hidden" onChange={e => e.target.files && setFbImg(e.target.files[0])} />
+                                                </label>
+                                                {fbImg && <p className="text-[10px] text-green-600 mt-1">Foto dipilih</p>}
+                                            </div>
                                         </div>
                                     </div>
                                 ) : (
@@ -390,9 +438,23 @@
                                                 </>
                                             ) : <p className="text-slate-400 text-xs italic py-4">Tidak ada rekaman suara.</p>}
                                         </div>
-                                        <div className="bg-orange-50 p-4 rounded-xl border border-orange-100">
+                                        <div className="bg-orange-50 p-4 rounded-xl border border-orange-100 mb-4">
                                             <div className="mb-3"><label className="text-xs font-bold text-orange-700 uppercase block mb-1">Nilai Hafalan (0-100)</label><input type="number" value={recitationScore} onChange={e=>setRecitationScore(e.target.value)} className="w-full p-3 rounded-lg border-2 border-orange-200 text-xl font-bold text-orange-800 focus:outline-none focus:border-orange-500" placeholder="0" /></div>
-                                            <div><label className="text-xs font-bold text-slate-500 uppercase block mb-1">Komentar Guru</label><textarea rows="3" value={commentRecitation} onChange={e=>setCommentRecitation(e.target.value)} className="w-full p-3 rounded-lg border border-slate-200 text-sm focus:outline-none focus:border-orange-400" placeholder="Berikan masukan untuk hafalan siswa..."></textarea></div>
+                                            <div className="mb-3"><label className="text-xs font-bold text-slate-500 uppercase block mb-1">Komentar Guru</label><textarea rows="3" value={commentRecitation} onChange={e=>setCommentRecitation(e.target.value)} className="w-full p-3 rounded-lg border border-slate-200 text-sm focus:outline-none focus:border-orange-400" placeholder="Berikan masukan untuk hafalan siswa..."></textarea></div>
+                                            
+                                            {/* REKAM BALASAN */}
+                                            <div className={`border-2 border-dashed rounded-xl p-3 text-center transition-colors ${fbAudUrl ? 'border-orange-500 bg-orange-100' : 'border-orange-200'}`}>
+                                                {fbAudUrl ? (
+                                                    <div>
+                                                        <audio src={fbAudUrl} controls className="h-8 w-full mb-2" />
+                                                        <button onClick={()=>{setFbAudUrl(null); setFbAudBlob(null);}} className="text-xs text-red-500 font-bold">Hapus & Rekam Ulang</button>
+                                                    </div>
+                                                ) : (
+                                                    <button onClick={isRecFb ? stopRecFb : startRecFb} className={`w-full py-2 rounded-lg text-xs font-bold ${isRecFb ? 'bg-red-500 text-white animate-pulse' : 'bg-white text-orange-600 border border-orange-200'}`}>
+                                                        {isRecFb ? 'STOP REKAM' : '+ REKAM SUARA BALASAN'}
+                                                    </button>
+                                                )}
+                                            </div>
                                         </div>
                                     </div>
                                 )}
