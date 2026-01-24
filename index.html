@@ -123,7 +123,7 @@
                         </button>
                     )}
                 </div>
-                <p className="absolute bottom-6 text-[10px] text-green-200/60 font-mono">Ver 18.1 (Fix Tab Crash)</p>
+                <p className="absolute bottom-6 text-[10px] text-green-200/60 font-mono">Ver 19.1 (Fix Audio Tab Crash)</p>
             </div>
         );
 
@@ -204,11 +204,11 @@
             const [audUrl, setAudUrl] = useState(null);
             const [isRec, setIsRec] = useState(false);
             const mrRef = useRef(null);
+            const chunksRef = useRef([]);
             const [audioExt, setAudioExt] = useState('.webm');
 
             useEffect(() => { localStorage.setItem('jawara_student_name', formName); }, [formName]);
             useEffect(() => { localStorage.setItem('jawara_student_class', formClass); }, [formClass]);
-            // Refresh icons on tab change
             useEffect(() => { if(window.lucide) window.lucide.createIcons(); });
 
             const filteredStudents = useMemo(() => (!formClass ? students : students.filter(s => s.className === formClass)), [formClass, students]);
@@ -216,13 +216,18 @@
             const personalAssignments = useMemo(() => (!formName || !formClass ? [] : assignments.filter(a => a.studentName === formName && a.className === formClass)), [assignments, formName, formClass]);
             const personalSummary = useMemo(() => {
                 let w = 0, r = 0, c = 0;
-                personalAssignments.forEach(a => { if(a.status === 'Dinilai' && a.grade) { w += parseInt(a.grade.writingScore || 0); r += parseInt(a.grade.recitationScore || 0); c++; } });
+                personalAssignments.forEach(a => {
+                    if(a.status === 'Dinilai' && a.grade) {
+                        totalWriting += parseInt(a.grade.writingScore || 0); totalRecitation += parseInt(a.grade.recitationScore || 0); count++;
+                    }
+                });
                 return { w, r, c };
             }, [personalAssignments]);
 
             const handleStudentSubmit = async () => {
                 if(!formName || !formClass || (!imgFile && !audBlob)) { alert("Data tidak lengkap."); return; }
                 if (!formSubject) { alert("Pilih mata pelajaran."); return; }
+
                 setIsUploading(true);
                 if (GOOGLE_SCRIPT_URL) {
                     try {
@@ -303,7 +308,7 @@
                         {activeTab === 'tasks' && (
                             <div className="space-y-6 fade-in">
                                 <div className="bg-white p-4 rounded-xl shadow-sm border border-slate-100"><h3 className="text-xs font-bold text-slate-400 uppercase mb-2">Identitas Rapor</h3><div className="flex gap-2"><select value={formClass} onChange={e=>setFormClass(e.target.value)} className="w-1/3 p-2 rounded border text-sm bg-slate-50"><option value="">Kelas</option>{classList.map(c => <option key={c} value={c}>{c}</option>)}</select><select value={formName} onChange={e=>setFormName(e.target.value)} className="w-2/3 p-2 rounded border text-sm bg-slate-50 disabled:opacity-50" disabled={!formClass}><option value="">Pilih Nama...</option>{filteredStudents.map(s => <option key={s.id} value={s.name}>{s.name}</option>)}</select></div></div>
-                                {(!formName || !formClass) ? (<div className="text-center py-12 opacity-60"><div className="w-20 h-20 bg-slate-100 rounded-full flex items-center justify-center mx-auto mb-4"><i data-lucide="user" className="text-slate-400" width="40"></i></div><p className="text-slate-500 text-sm px-8">Silahkan <b>Pilih Kelas & Nama</b> di atas untuk melihat nilai rapor Anda.</p></div>) : (
+                                {(!formName || !formClass) ? (<div className="text-center py-12 opacity-60"><div className="w-20 h-20 bg-slate-100 rounded-full flex items-center justify-center mx-auto mb-4"><i data-lucide="user" class="text-slate-400" width="40"></i></div><p className="text-slate-500 text-sm px-8">Silahkan <b>Pilih Kelas & Nama</b> di atas untuk melihat nilai rapor Anda.</p></div>) : (
                                     <>
                                         <div className="bg-gradient-to-r from-blue-600 to-indigo-700 rounded-2xl p-6 text-white shadow-xl transform hover:scale-[1.01] transition-transform"><h3 className="text-xs font-bold opacity-70 mb-4 text-center uppercase tracking-widest">Total Poin Saya</h3><div className="grid grid-cols-2 gap-4 divide-x divide-white/20"><div className="text-center"><span className="block text-4xl font-black mb-1">{personalSummary.w}</span><span className="text-[10px] opacity-80 uppercase tracking-wide">Menulis</span></div><div className="text-center"><span className="block text-4xl font-black mb-1">{personalSummary.r}</span><span className="text-[10px] opacity-80 uppercase tracking-wide">Hafalan</span></div></div></div>
                                         {personalAssignments.length === 0 ? (<p className="text-center text-slate-400 text-sm mt-8">Belum ada tugas.</p>) : (<div className="space-y-3 mt-6">{personalAssignments.map(tugas => (<div key={tugas.id} className="bg-white rounded-xl p-4 shadow-sm border border-slate-100 hover:shadow-md transition-shadow"><div className="flex justify-between items-start mb-3 pb-3 border-b border-dashed border-slate-100"><div><h3 className="font-bold text-slate-800 text-sm">{tugas.subject}</h3><p className="text-[10px] text-slate-400 mt-0.5">{new Date(tugas.timestamp).toLocaleDateString()}</p></div><span className={`px-2 py-1 rounded text-[10px] font-bold ${tugas.status === 'Dinilai' ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-700'}`}>{tugas.status}</span></div>{tugas.status === 'Dinilai' && (<div className="grid grid-cols-2 gap-2 mt-2"><div className="text-xs bg-blue-50 p-2 rounded text-blue-700 font-bold flex justify-between">Tulis <span>{tugas.grade.writingScore}</span></div><div className="text-xs bg-orange-50 p-2 rounded text-orange-700 font-bold flex justify-between">Hafal <span>{tugas.grade.recitationScore}</span></div></div>)}<button onClick={() => setSelectedAssignment(tugas)} className="w-full mt-3 py-2.5 bg-slate-50 text-slate-600 text-xs font-bold rounded-lg hover:bg-green-50 hover:text-green-700 border border-slate-200 hover:border-green-200 transition-colors flex items-center justify-center gap-2"><i data-lucide="eye" width="14"></i> LIHAT DETAIL</button></div>))}</div>)}
@@ -345,15 +350,36 @@
             const openGrading = (id) => {
                 const task = assignments.find(a => a.id === id);
                 setGradingId(id);
-                setGradingTab(task.files.imageId && task.files.imageId !== "ERROR" && task.files.imageId.length > 10 ? 'image' : 'audio'); 
+                // Pilih tab yang ada filenya. Prioritas ke foto jika ada, jika tidak ke audio.
+                const hasImage = task.files.imageId && task.files.imageId !== "ERROR" && task.files.imageId.length > 10;
+                setGradingTab(hasImage ? 'image' : 'audio'); 
                 setFbImg(null); setFbAudBlob(null); setFbAudUrl(null);
+                
                 if(task.grade) { 
-                    setWritingScore(task.grade.writingScore); setRecitationScore(task.grade.recitationScore); 
-                    const c = splitComments(task.grade.feedbackText); setCommentWriting(c.w); setCommentRecitation(c.r);
-                } else { setWritingScore(''); setRecitationScore(''); setCommentWriting(''); setCommentRecitation(''); }
+                    setWritingScore(task.grade.writingScore); 
+                    setRecitationScore(task.grade.recitationScore); 
+                    const c = splitComments(task.grade.feedbackText);
+                    setCommentWriting(c.w);
+                    setCommentRecitation(c.r);
+                } else { 
+                    setWritingScore(''); setRecitationScore(''); 
+                    setCommentWriting(''); setCommentRecitation(''); 
+                }
             };
 
-            const startRecFb = async () => { try { const s = await navigator.mediaDevices.getUserMedia({ audio: true }); mrRefFb.current = new MediaRecorder(s, { mimeType: 'audio/webm' }); chunksRefFb.current = []; mrRefFb.current.ondataavailable = e => { if (e.data.size > 0) chunksRefFb.current.push(e.data); }; mrRefFb.current.onstop = () => { const b = new Blob(chunksRefFb.current, { type: 'audio/webm' }); setFbAudBlob(b); setFbAudUrl(URL.createObjectURL(b)); }; mrRefFb.current.start(); setIsRecFb(true); } catch(e) { alert("Mic error"); } };
+            const startRecFb = async () => {
+                try {
+                    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                    mrRefFb.current = new MediaRecorder(stream, { mimeType: 'audio/webm' });
+                    chunksRefFb.current = [];
+                    mrRefFb.current.ondataavailable = e => { if (e.data.size > 0) chunksRefFb.current.push(e.data); };
+                    mrRefFb.current.onstop = () => {
+                        const blob = new Blob(chunksRefFb.current, { type: 'audio/webm' });
+                        setFbAudBlob(blob); setFbAudUrl(URL.createObjectURL(blob));
+                    };
+                    mrRefFb.current.start(); setIsRecFb(true);
+                } catch(e) { alert("Mic error: " + e.message); }
+            };
             const stopRecFb = () => { if(mrRefFb.current) { mrRefFb.current.stop(); setIsRecFb(false); } };
 
             const submitGrade = async () => {
@@ -400,6 +426,9 @@
                                             <div className="mb-3"><label className="text-xs font-bold text-slate-500 uppercase block mb-1">Komentar</label><textarea rows="3" value={commentWriting} onChange={e=>setCommentWriting(e.target.value)} className="w-full p-3 rounded-lg border border-slate-200 text-sm focus:outline-none focus:border-blue-400" placeholder="..."></textarea></div>
                                             <div className={`border-2 border-dashed rounded-xl p-3 text-center cursor-pointer transition-colors ${fbImg ? 'border-blue-500 bg-blue-100' : 'border-blue-200'}`}><label className="cursor-pointer block"><div className="mb-1 text-blue-500 flex justify-center"><i data-lucide="image-plus" width="24"></i></div><span className="text-xs font-bold text-blue-600">{fbImg ? "Ganti" : "Upload Coretan"}</span><input type="file" accept="image/*" className="hidden" onChange={e => e.target.files && setFbImg(e.target.files[0])} /></label></div>
                                         </div>
+                                        <div className="mt-4">
+                                            <button onClick={submitGrade} disabled={isSubmitting} className="w-full bg-blue-600 text-white font-bold py-3.5 rounded-xl shadow-lg hover:bg-blue-700 transition-colors flex items-center justify-center gap-2 border-b-4 border-blue-800 active:border-b-0 active:translate-y-1">{isSubmitting ? <><i data-lucide="loader-2" className="animate-spin" width="20"/> Menyimpan...</> : 'SIMPAN NILAI TULIS'}</button>
+                                        </div>
                                     </div>
                                 ) : (
                                     <div className="fade-in">
@@ -409,11 +438,13 @@
                                             <div className="mb-3"><label className="text-xs font-bold text-slate-500 uppercase block mb-1">Komentar</label><textarea rows="3" value={commentRecitation} onChange={e=>setCommentRecitation(e.target.value)} className="w-full p-3 rounded-lg border border-slate-200 text-sm focus:outline-none focus:border-orange-400" placeholder="..."></textarea></div>
                                             <div className={`border-2 border-dashed rounded-xl p-3 text-center transition-colors ${fbAudUrl ? 'border-orange-500 bg-orange-100' : 'border-orange-200'}`}>{fbAudUrl ? (<div><audio src={fbAudUrl} controls className="h-8 w-full mb-2" /><button onClick={()=>{setFbAudUrl(null); setFbAudBlob(null);}} className="text-xs text-red-500 font-bold">Hapus</button></div>) : (<button onClick={isRecFb ? stopRecFb : startRecFb} className={`w-full py-2 rounded-lg text-xs font-bold ${isRecFb ? 'bg-red-500 text-white animate-pulse' : 'bg-white text-orange-600 border border-orange-200'}`}>{isRecFb ? 'STOP' : '+ REKAM BALASAN'}</button>)}</div>
                                         </div>
+                                        <div className="mt-4">
+                                            <button onClick={submitGrade} disabled={isSubmitting} className="w-full bg-orange-600 text-white font-bold py-3.5 rounded-xl shadow-lg hover:bg-orange-700 transition-colors flex items-center justify-center gap-2 border-b-4 border-orange-800 active:border-b-0 active:translate-y-1">{isSubmitting ? <><i data-lucide="loader-2" className="animate-spin" width="20"/> Menyimpan...</> : 'SIMPAN NILAI HAFALAN'}</button>
+                                        </div>
                                     </div>
                                 )}
                             </div>
                         </div>
-                        <div className="fixed bottom-0 left-0 right-0 p-4 bg-white border-t border-slate-200 max-w-md mx-auto z-50"><button onClick={submitGrade} disabled={isSubmitting} className="w-full bg-green-600 text-white font-bold py-3.5 rounded-xl shadow-lg hover:bg-green-700 transition-colors flex items-center justify-center gap-2 border-b-4 border-green-800 active:border-b-0 active:translate-y-1">{isSubmitting ? <><i data-lucide="loader-2" className="animate-spin" width="20"></i> Menyimpan...</> : 'SIMPAN SEMUA NILAI'}</button></div>
                     </div>
                 );
             }
