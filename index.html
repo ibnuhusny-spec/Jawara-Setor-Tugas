@@ -67,6 +67,15 @@
         const getAudioEmbed = (id) => (id && id.length > 10 && id !== "ERROR") ? `https://drive.google.com/file/d/${id}/preview` : null;
         const getAudioDownload = (id) => (id && id.length > 10 && id !== "ERROR") ? `https://drive.google.com/uc?export=download&id=${id}` : null;
 
+        // Format tanggal aman (Anti-Crash)
+        const formatDate = (dateStr) => {
+            try {
+                if(!dateStr) return '-';
+                const d = new Date(dateStr);
+                return isNaN(d.getTime()) ? '-' : d.toLocaleDateString('id-ID');
+            } catch (e) { return '-'; }
+        };
+
         const compressImage = (file) => {
             return new Promise((resolve, reject) => {
                 const reader = new FileReader();
@@ -123,7 +132,7 @@
                         </button>
                     )}
                 </div>
-                <p className="absolute bottom-6 text-[10px] text-green-200/60 font-mono">Ver 19.1 (Fix Audio Tab Crash)</p>
+                <p className="absolute bottom-6 text-[10px] text-green-200/60 font-mono">Ver 19.2 (Crash Fix)</p>
             </div>
         );
 
@@ -218,7 +227,7 @@
                 let w = 0, r = 0, c = 0;
                 personalAssignments.forEach(a => {
                     if(a.status === 'Dinilai' && a.grade) {
-                        totalWriting += parseInt(a.grade.writingScore || 0); totalRecitation += parseInt(a.grade.recitationScore || 0); count++;
+                        w += parseInt(a.grade.writingScore || 0); r += parseInt(a.grade.recitationScore || 0); c++;
                     }
                 });
                 return { w, r, c };
@@ -257,6 +266,7 @@
 
             if (selectedAssignment) {
                 const task = selectedAssignment;
+                // Safe access with optional chaining
                 const comments = splitComments(task.grade?.feedbackText);
                 const fbImgUrl = getImgLink(task.grade?.feedbackImageId);
                 const fbAudEmbed = getAudioEmbed(task.grade?.feedbackAudioId);
@@ -267,7 +277,7 @@
                         <button onClick={() => setSelectedAssignment(null)} className="mb-4 text-slate-500 font-bold flex items-center gap-1 bg-white px-3 py-1 rounded-full shadow-sm"><i data-lucide="x" width="16"></i> Tutup</button>
                         <div className="bg-white rounded-3xl p-6 shadow-xl border border-slate-100">
                             <h2 className="text-xl font-bold text-slate-800 mb-1">Hasil Koreksi</h2>
-                            <p className="text-sm text-slate-500 mb-6 bg-slate-100 inline-block px-3 py-1 rounded-lg">{task.subject} • {new Date(task.timestamp).toLocaleDateString()}</p>
+                            <p className="text-sm text-slate-500 mb-6 bg-slate-100 inline-block px-3 py-1 rounded-lg">{task.subject} • {formatDate(task.timestamp)}</p>
                             <div className="mb-6 pb-6 border-b border-dashed border-slate-200">
                                 <h3 className="text-xs font-bold text-blue-600 uppercase mb-3 flex items-center gap-2"><i data-lucide="image" width="16"></i> Tugas Tulis</h3>
                                 <div className="bg-blue-50 p-4 rounded-2xl border border-blue-100">
@@ -311,7 +321,7 @@
                                 {(!formName || !formClass) ? (<div className="text-center py-12 opacity-60"><div className="w-20 h-20 bg-slate-100 rounded-full flex items-center justify-center mx-auto mb-4"><i data-lucide="user" class="text-slate-400" width="40"></i></div><p className="text-slate-500 text-sm px-8">Silahkan <b>Pilih Kelas & Nama</b> di atas untuk melihat nilai rapor Anda.</p></div>) : (
                                     <>
                                         <div className="bg-gradient-to-r from-blue-600 to-indigo-700 rounded-2xl p-6 text-white shadow-xl transform hover:scale-[1.01] transition-transform"><h3 className="text-xs font-bold opacity-70 mb-4 text-center uppercase tracking-widest">Total Poin Saya</h3><div className="grid grid-cols-2 gap-4 divide-x divide-white/20"><div className="text-center"><span className="block text-4xl font-black mb-1">{personalSummary.w}</span><span className="text-[10px] opacity-80 uppercase tracking-wide">Menulis</span></div><div className="text-center"><span className="block text-4xl font-black mb-1">{personalSummary.r}</span><span className="text-[10px] opacity-80 uppercase tracking-wide">Hafalan</span></div></div></div>
-                                        {personalAssignments.length === 0 ? (<p className="text-center text-slate-400 text-sm mt-8">Belum ada tugas.</p>) : (<div className="space-y-3 mt-6">{personalAssignments.map(tugas => (<div key={tugas.id} className="bg-white rounded-xl p-4 shadow-sm border border-slate-100 hover:shadow-md transition-shadow"><div className="flex justify-between items-start mb-3 pb-3 border-b border-dashed border-slate-100"><div><h3 className="font-bold text-slate-800 text-sm">{tugas.subject}</h3><p className="text-[10px] text-slate-400 mt-0.5">{new Date(tugas.timestamp).toLocaleDateString()}</p></div><span className={`px-2 py-1 rounded text-[10px] font-bold ${tugas.status === 'Dinilai' ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-700'}`}>{tugas.status}</span></div>{tugas.status === 'Dinilai' && (<div className="grid grid-cols-2 gap-2 mt-2"><div className="text-xs bg-blue-50 p-2 rounded text-blue-700 font-bold flex justify-between">Tulis <span>{tugas.grade.writingScore}</span></div><div className="text-xs bg-orange-50 p-2 rounded text-orange-700 font-bold flex justify-between">Hafal <span>{tugas.grade.recitationScore}</span></div></div>)}<button onClick={() => setSelectedAssignment(tugas)} className="w-full mt-3 py-2.5 bg-slate-50 text-slate-600 text-xs font-bold rounded-lg hover:bg-green-50 hover:text-green-700 border border-slate-200 hover:border-green-200 transition-colors flex items-center justify-center gap-2"><i data-lucide="eye" width="14"></i> LIHAT DETAIL</button></div>))}</div>)}
+                                        {personalAssignments.length === 0 ? (<p className="text-center text-slate-400 text-sm mt-4">Belum ada tugas.</p>) : (<div className="space-y-3 mt-6">{personalAssignments.map(tugas => (<div key={tugas.id} className="bg-white rounded-xl p-4 shadow-sm border border-slate-100 hover:shadow-md transition-shadow"><div className="flex justify-between items-start mb-3 pb-3 border-b border-dashed border-slate-100"><div><h3 className="font-bold text-slate-800 text-sm">{tugas.subject}</h3><p className="text-[10px] text-slate-400 mt-0.5">{formatDate(tugas.timestamp)}</p></div><span className={`px-2 py-1 rounded text-[10px] font-bold ${tugas.status === 'Dinilai' ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-700'}`}>{tugas.status}</span></div>{tugas.status === 'Dinilai' && (<div className="grid grid-cols-2 gap-2 mt-2"><div className="text-xs bg-blue-50 p-2 rounded text-blue-700 font-bold flex justify-between">Tulis <span>{tugas.grade?.writingScore || 0}</span></div><div className="text-xs bg-orange-50 p-2 rounded text-orange-700 font-bold flex justify-between">Hafal <span>{tugas.grade?.recitationScore || 0}</span></div></div>)}<button onClick={() => setSelectedAssignment(tugas)} className="w-full mt-3 py-2.5 bg-slate-50 text-slate-600 text-xs font-bold rounded-lg hover:bg-green-50 hover:text-green-700 border border-slate-200 hover:border-green-200 transition-colors flex items-center justify-center gap-2"><i data-lucide="eye" width="14"></i> LIHAT DETAIL</button></div>))}</div>)}
                                     </>
                                 )}
                             </div>
@@ -341,7 +351,6 @@
             const mrRefFb = useRef(null); const chunksRefFb = useRef([]);
             const [filterClass, setFilterClass] = useState('all');
 
-            // Refresh Icons on Tab Change
             useEffect(() => { if(window.lucide) window.lucide.createIcons(); });
 
             const classList = useMemo(() => [...new Set(students.map(s => s.className))].sort(), [students]);
@@ -350,9 +359,7 @@
             const openGrading = (id) => {
                 const task = assignments.find(a => a.id === id);
                 setGradingId(id);
-                // Pilih tab yang ada filenya. Prioritas ke foto jika ada, jika tidak ke audio.
-                const hasImage = task.files.imageId && task.files.imageId !== "ERROR" && task.files.imageId.length > 10;
-                setGradingTab(hasImage ? 'image' : 'audio'); 
+                setGradingTab(task.files.imageId && task.files.imageId !== "ERROR" && task.files.imageId.length > 10 ? 'image' : 'audio'); 
                 setFbImg(null); setFbAudBlob(null); setFbAudUrl(null);
                 
                 if(task.grade) { 
